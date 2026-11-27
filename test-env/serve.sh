@@ -44,6 +44,15 @@ start() {
     start_one web "$HTTPS_PORT" python3 test-env/httpserver.py
   fi
   start_one ftpd "$FTP_PORT" env FTP_USER="$FTP_USER" FTP_PASS="$FTP_PASS" FTP_PORT="$FTP_PORT" python3 test-env/ftpd.py
+  for i in $(seq 1 40); do
+    is_listening "$FTP_PORT" && break
+    sleep 0.25
+  done
+  if ! is_listening "$FTP_PORT"; then
+    echo "FAIL: FTP server did not listen on $FTP_PORT" >&2
+    cat "$RUN/ftpd.log" >&2 || true
+    return 1
+  fi
   wait_http "http://127.0.0.1:${HTTP_PORT}/1kib.bin"
   # wait_http cannot carry extra curl flags; verify TLS directly.
   for i in $(seq 1 80); do
