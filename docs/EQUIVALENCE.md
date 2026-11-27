@@ -83,7 +83,7 @@
 | N1 | GID：`[#<6hex>` → `[#<GID>`；16 hex 的 gid 字符串 → `<GID>`。比较器用本进程内收集到的真实 GID 做映射，杜绝误替换；阶段 1 落地 `test-env/check-gid-consistency.py`，逐次运行断言结果表短 GID 与 `GID#` 长 GID 一一对应。 |
 | N2 | 路径：fixture 沙箱根目录绝对路径 → `<DIR>`；两个实现各用独立沙箱目录，产物比对先转相对路径。 |
 | N3 | 读出与汇总中的动态数值：速率、ETA、百分比、avg speed → `<N>`；`ETA:<h m s>` 整段 → `ETA:<T>`（格式见 `src/util.cc` `secfmt`）。 |
-| N4 | 时间戳：`Progress Summary as of <asctime>`、文件日志行首日期时间 → `<TS>`。 |
+| N4 | 时间戳与日期：文件日志行首的 `MM/DD`（跨时区/跨日录制差异）、`Progress Summary as of <asctime>`、日志行首时间 → `<TS>`。 |
 | N5 | 端口/地址：本地服务器端口 → `<PORT>`；BT peer `IP:port` → `<ADDR>`。 |
 | N6 | JSON：解析后做结构比较（键序无关），字符串值按 N1/N2/N5 归一，数值按 E15 分级。 |
 | N7 | 控制文件：解析二进制后逐字段比对；in-flight piece 条目按 index 排序后作为集合比较（条目内 bitfield 必须逐字节相等）；BT `uploadLength` 只断言 ≥ fixture 起始值。原始字节流不做整体比较。 |

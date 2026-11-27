@@ -182,6 +182,7 @@ lsof -nP -iTCP:18080 -sTCP:LISTEN   # 预期: 仅 127.0.0.1:18080
 rust-anything analyze . --whole-app -o rust/plan.md
 rust-anything app record . --timeout 120 \
   --normalize timestamps \
+  --normalize 'date=\b\d{2}/\d{2}\b' \
   --normalize 'speed=\s+(?:n/a|[0-9]+(?:\.[0-9]+)?[KMGTP]?i?B/s)' \
   --normalize 'src-line=\[[A-Za-z0-9_.-]+\.cc:\d+\]' \
   --normalize "argv0=(?m)^[^\\n]*aria2c: unrecognized option [\`']" \
