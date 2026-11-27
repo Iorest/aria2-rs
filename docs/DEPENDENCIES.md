@@ -52,6 +52,7 @@ $ find . -path ./.git -prune -o \( -name "*.cc" -o -name "*.h" -o -name "*.c" \)
 | 能力 | crate 候选 | 当日版本/更新 | fit | 说明与替代路径 |
 |---|---|---|---|---|
 | 事件循环/并发 | tokio | 1.54.1 / 2026-10-21 | ok | 取代 DownloadEngine 事件模型与 5 个 EventPoll 后端 |
+| CLI 参数解析（前门阶段） | clap | 4.6.10 / 2026-11-27 锁定 | ok | `rust/app` 前门按录制品生成命令/flag 解析器；阶段 2 起逐单元接管，阶段 7 前不得把前门当最终 CLI |
 | socket 选项 | socket2 | 0.6.5 / 2026-11-24 | ok | TCP_NODELAY、SO_REUSEADDR、bind 逐项对照 |
 | TLS | rustls + rustls-native-certs | 0.24.0-dev.3 / 2026-11-12；0.8.5 / 2026-10-13 | ok | 收敛 4 个 TLS 后端为 1；证书行为差异交 EQUIVALENCE 契约 |
 | DNS | tokio::net::lookup_host（getaddrinfo） | — | ok | 等价性基线（与原版默认路径一致） |

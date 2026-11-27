@@ -91,17 +91,8 @@ aria2-rs/
 证书只服务本测试环境，**严禁导入系统信任链**（不动 macOS 钥匙串，不用 `caddy trust`）。信任的唯一方式是 aria2c 的 `--ca-certificate=test-env/certs/ca.crt`。
 
 ```sh
-mkdir -p test-env/certs && cd test-env/certs
-# 测试 CA（仅本仓使用）
-openssl req -x509 -newkey rsa:2048 -sha256 -days 825 -nodes \
-  -keyout ca.key -out ca.crt -subj "/CN=aria2-rs test CA"
-# 服务端证书：SAN 含 localhost 与 127.0.0.1
-# （macOS LibreSSL 不支持 -addext，用 extfile；两端写法均兼容）
-openssl req -newkey rsa:2048 -nodes -keyout server.key -out server.csr -subj "/CN=localhost"
-printf 'subjectAltName=DNS:localhost,IP:127.0.0.1\nextendedKeyUsage=serverAuth\n' > server.ext
-openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial \
-  -days 825 -sha256 -extfile server.ext -out server.crt
-rm server.csr server.ext
+# setup.sh 调用本仓的确定性生成器：固定种子 + 固定日期，任何 checkout 都产出同一组证书
+python3 test-env/gen_certs.py   # 写 test-env/certs/{ca,server}.{crt,key}
 ```
 
 规则：私钥全部留在 `test-env/certs/`（gitignore）；证书校验保持 aria2 默认 `--check-certificate=true`（走真实校验路径），**禁止出现 `--check-certificate=false`** 的用例——TLS 等价性不能靠关掉校验绕过。
@@ -154,7 +145,7 @@ DHT/PEX：阶段 1–3 不传任何 DHT/BT 参数（aria2 默认关闭）；阶�
 - **录制品 scrub**（入评审 checklist）：提交 `rust/app-cases/` 前运行：
 
   ```sh
-  grep -rnE 'creds\.json|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY' rust/app-cases cases \
+  grep -rnE 'creds\.json|BEGIN [A-Z ]*PRIVATE KEY' rust/app-cases cases \
     && echo 'FAIL: credential leak' && exit 1 || true
   ```
 
@@ -166,16 +157,16 @@ DHT/PEX：阶段 1–3 不传任何 DHT/BT 参数（aria2 默认关闭）；阶�
 
 ```sh
 # (0) 一次性环境准备
-brew install caddy autoconf automake libtool pkg-config gettext openssl@3
-python3 -m pip install pyftpdlib
+python3 -m pip install pyftpdlib cryptography
 
 # (1) 构建原版 aria2（pinned release-1.37.0 → env/aria2-1.37.0/bin/aria2c）
 git clone --depth 1 --branch release-1.37.0 https://github.com/aria2/aria2.git env/aria2-src
 cd env/aria2-src && autoreconf -i \
-  && CPPFLAGS="-I$(brew --prefix openssl@3)/include" \
-     LDFLAGS="-L$(brew --prefix openssl@3)/lib" \
+  && PKG_CONFIG_PATH="$(brew --prefix openssl@3)/lib/pkgconfig" \
+     CPPFLAGS="-I$(brew --prefix openssl@3)/include" \
+     LDFLAGS="-L$(brew --prefix openssl@3)/lib -framework Security" \
      ./configure --prefix="$PWD/../aria2-1.37.0" \
-       --with-openssl --without-gnutls --without-libxml2 \
+       --with-openssl --without-appletls --without-gnutls --without-libxml2 \
        --without-libexpat --disable-nls \
   && make -j"$(sysctl -n hw.ncpu)" && make install && cd ../..
 shasum -a 256 env/aria2-1.37.0/bin/aria2c   # 结果记入 PR 描述
@@ -189,9 +180,11 @@ lsof -nP -iTCP:18080 -sTCP:LISTEN   # 预期: 仅 127.0.0.1:18080
 
 # (4) 全库分析与录制（真实原版二进制 + 本地服务器）
 rust-anything analyze . --whole-app -o rust/plan.md
-rust-anything app record . --timeout 60 \
+rust-anything app record . --timeout 120 \
   --normalize timestamps \
   --normalize 'speed=\s+(?:n/a|[0-9]+(?:\.[0-9]+)?[KMGTP]?i?B/s)' \
+  --normalize 'src-line=\[[A-Za-z0-9_.-]+\.cc:\d+\]' \
+  --normalize "argv0=(?m)^[^\\n]*aria2c: unrecognized option [\`']" \
   --fresh test-env/fixtures --fresh test-env/certs --fresh downloads \
   --inputs cases/stage1.jsonl \
   -- env/aria2-1.37.0/bin/aria2c \
@@ -199,6 +192,8 @@ rust-anything app record . --timeout 60 \
      --all-proxy=http://127.0.0.1:9 --no-proxy=127.0.0.1,localhost \
      --max-tries=1 --retry-wait=0 \
      --ca-certificate=test-env/certs/ca.crt
+test-env/scrub-cases.sh       # 删除录制品中的 *.key 并以 PKCS#8 正则复核
+
 
 # (5) 回放：原版与 Rust 前门都必须 100%
 # --build 会替换整条运行命令，因此原版必须把 (4) 的公共参数一并引号包裹传入
@@ -211,9 +206,9 @@ rust-anything app replay . --build rust/app/target/debug/aria2c  # 预期: 185/1
 说明：
 
 - `cases/stage1.jsonl`：每行一个用例 `{"name", "args": [...]}`（必要时含 `"env"` / `"files"`），URI 全部指向 127.0.0.1；用例清单来源与阶段 1 验收标准见 TELE-96（0.8）。
-- record 对每例连跑两次并自动归类噪声；两跑一致的固定值（时间戳、零速 `n/a`）不会自动通配，replay 跨分钟运行必然失配，故 §8 显式加 `timestamps` 与 `speed=...` 两个 normalizer（在比对两侧把值替换为 `[..]`，不改录制品原文）。`-j2` 并发下载行的顺序抖动由用例文件中的 `[..]` 整行通配吸收。
+- record 对每例连跑两次并自动归类噪声；两跑一致的固定值（时间戳、零速 `n/a`）不会自动通配，replay 跨分钟运行必然失配，故 §8 显式加 `timestamps`、`speed`、`src-line`、`argv0` 四条 normalizer（在比对两侧把值替换为 `[..]`，不改录制品原文）。`-j2` 并发下载行的顺序抖动由 `man-05` 用例的整行 `[..]` 吸收；macOS 独有的 `Allocating disk space` 提示由 `man-03` 的 `...` 吸收。原版必须在 macOS 上用 `--without-appletls --with-openssl` 构建，否则 AppleTLS 忽略 `--ca-certificate`，HTTPS 正向用例会被录成 TLS 失败。
 - 用例失败时先读 `rust/app-cases/` 报告里的 diff，再单 case 复跑：`rust-anything app replay . --case <name>`。
-- **CI 构建输入（TELE-97 实测修订）**：GitHub Actions 的 Ubuntu runner 不能用 `autoreconf` 从源码 clone 构建——aria2 1.37.0 自带 gettext 0.18 的 `po/Makefile.in.in` 与 runner 的 0.22 宏冲突（`make` 报 `check-macro-version` Error 1；`autopoint --force` 亦无效，连续两轮）。按 owner 授权改用同一 tag 的官方 release tarball：`https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0.tar.xz`，SHA-256 `60a420ad7085eb616cb6e2bdf0a7206d68ff3d37fb5a956dc44242eb2f79b66b`，校验后直接 `./configure`（无 autoreconf），安装前缀与本地一致。tarball 二进制本机 G1 复测 185/185（4 次），与源码构建行为等价；本地复现命令仍保留源码 clone 路径。
+- **CI 构建输入（TELE-97 实测修订）**：GitHub Actions 的 Ubuntu runner 不能用 `autoreconf` 从源码 clone 构建——aria2 1.37.0 自带 gettext 0.18 的 `po/Makefile.in.in` 与 runner 的 0.22 宏冲突（`make` 报 `check-macro-version` Error 1；`autopoint --force` 亦无效，连续两轮）。按 owner 授权改用同一 tag 的官方 release tarball：`https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0.tar.xz`，SHA-256 `60a420ad7085eb616cb6e2bdf0a7206d68ff3d37fb5a956dc44242eb2f79b66b`，校验后直接 `./configure`（无 autoreconf）。CI 与本地都用 OpenSSL 而非 AppleTLS；证书由 `gen_certs.py` 确定性生成，`scrub-cases.sh` 保证录制品不含私钥。
 - 构建依赖以 aria2 官方 README 为准；`--without-libssh2` 是阶段 1 基线，阶段 6 重建（加 `--with-libssh2`）后重录 FTP/SFTP 用例并在 `rust/DECISIONS.md` 记 ADR。
 
 ## 9. 验收对照

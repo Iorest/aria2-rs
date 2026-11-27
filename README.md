@@ -30,7 +30,7 @@ A Rust rewrite of aria2, behaviour-checked with rust-anything (GPL-2.0).
 
 ## 状态
 
-阶段 0 已收口；阶段 1（基线录制与 Rust 前门）进行中。阶段表见上游任务 TELE-88（Multica）。前门 `rust/app` 建立后，未移植命令全部回落原版 aria2（首轮 fallback 100%）。
+阶段 0 已收口；阶段 1（基线录制与 Rust 前门）已交付，CI replay 全绿。阶段表见上游任务 TELE-88（Multica）。前门 `rust/app` 建立后，未移植命令全部回落原版 aria2（首轮 fallback 100%）。
 
 
 ## 复现阶段 1
