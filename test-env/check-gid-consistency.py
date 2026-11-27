@@ -10,7 +10,7 @@ mapping. Exit 0 only when every table GID maps to a GID# in the same run.
 import re
 import subprocess
 import sys
-import tempfile
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -27,18 +27,16 @@ SHORT_GID = re.compile(r"^([0-9a-f]{6})\|\s*(?:OK|ERR|INPR|REMOVED)\s*\|", re.M)
 
 
 def run(binary: str, args: list[str]) -> str:
-    with tempfile.TemporaryDirectory(prefix="gid-check-") as work:
-        process = subprocess.run(
-            [binary, *RUN, "--dir=downloads", *args],
-            cwd=ROOT,
-            env={**__import__("os").environ, "HOME": str(ROOT / "test-env" / "home")},
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-        output = process.stdout + "\n" + process.stderr
-        # The temp dir keeps aria2's writes away from the recording snapshot.
-        return output
+    process = subprocess.run(
+        [binary, *RUN, "--dir=downloads", *args],
+        cwd=ROOT,
+        env={**os.environ, "HOME": str(ROOT / "test-env" / "home")},
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    # Writes land in the gitignored downloads/ tree, never in rust/app-cases/.
+    return process.stdout + "\n" + process.stderr
 
 
 def check(binary: str, args: list[str]) -> bool:
@@ -65,7 +63,7 @@ if __name__ == "__main__":
     binary = sys.argv[1] if len(sys.argv) > 1 else "rust/app/target/debug/aria2c"
     cases = [
         ["http://127.0.0.1:18080/nonexistent.bin"],
-        ["http://127.0.0.1:18080/nonexistent1.bin", "http://127.0.0.1:18080/nonexistent2.bin"],
+        ["-Z", "-j2", "http://127.0.0.1:18080/nonexistent1.bin", "http://127.0.0.1:18080/nonexistent2.bin"],
     ]
     ok = all(check(binary, args) for args in cases)
     print("GID mapping comparator: PASS" if ok else "GID mapping comparator: FAIL")

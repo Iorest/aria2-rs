@@ -1,9 +1,9 @@
-"""Deterministic test-only CA and server certificate.
+"""Reproducible test-only CA and server certificate.
 
-The recording snapshot (rust/app-cases/files/test-env/certs/ca.crt) must be the
-same CA the live HTTPS server is signed by on every fresh checkout. Random
-openssl key generation cannot guarantee that, so derive fixed EC keys from
-published seeds and build fixed-date certificates with `cryptography`.
+The recording snapshot (rust/app-cases/files/test-env/certs/ca.crt) must trust
+the live HTTPS server on every fresh checkout. Fixed EC keys from published
+seeds guarantee the same key pair and trust anchor; ECDSA signatures are
+randomized, so certificate bytes differ between runs by design.
 
 These keys are test-only, never trusted by the system store. They are written
 to test-env/certs/ (gitignored) and must never be committed.

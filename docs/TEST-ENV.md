@@ -91,7 +91,7 @@ aria2-rs/
 证书只服务本测试环境，**严禁导入系统信任链**（不动 macOS 钥匙串，不用 `caddy trust`）。信任的唯一方式是 aria2c 的 `--ca-certificate=test-env/certs/ca.crt`。
 
 ```sh
-# setup.sh 调用本仓的确定性生成器：固定种子 + 固定日期，任何 checkout 都产出同一组证书
+# setup.sh 调用本仓的可复现生成器：固定种子 → 同一密钥对/信任锚；ECDSA 签名随机，证书字节不逐字节相同
 python3 test-env/gen_certs.py   # 写 test-env/certs/{ca,server}.{crt,key}
 ```
 

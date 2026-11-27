@@ -1,10 +1,11 @@
-"""Apply EQUIVALENCE N3/N9 progress-line noise to recorded stdout cases.
+"""Apply EQUIVALENCE N3/N9 progress noise to recorded stdout cases.
 
-aria2 prints readouts like `[#GID 1.0MiB/1.0MiB(100%) CN:1]` and a
-`*** Download Progress Summary ... ***` block when a run is slow. Which of
-those lines appear depends on timing, not behavior. The contract removes them
-before comparison; in trycmd terms that is an ellipsis line around the stable
-notification lines. Run after `app record` and before `scrub-cases.sh`.
+Only timing-dependent progress readouts are removed. Every other line between
+`Downloading` and `Download Results:` (NOTICE level, checksum verification,
+completion path, error text) stays literal and is kept as an ordered anchor;
+an ellipsis before each anchor absorbs any number of progress lines.
+
+Run after `app record` and before `scrub-cases.sh`.
 """
 
 import re
@@ -12,26 +13,30 @@ from pathlib import Path
 
 CASES = Path(__file__).resolve().parent.parent / "rust" / "app-cases"
 DOWNLOADING = re.compile(r"Downloading \d+ item\(s\)")
-COMPLETE = re.compile(r"Download complete: (\S+)")
+RESULTS = re.compile(r"^Download Results:")
+PROGRESS = re.compile(
+    r"^\[#[0-9a-f]{6} |^\*\*\* Download Progress Summary"
+    r"|^={10,}$|^-{10,}$|^FILE: |^\[FileAlloc:#"
+)
 
 
 def patch(path: Path) -> bool:
     lines = path.read_text().splitlines()
     start = next((i for i, line in enumerate(lines) if DOWNLOADING.search(line)), None)
-    end = next((i for i, line in enumerate(lines) if line.startswith("Download Results:")), None)
+    end = next((i for i, line in enumerate(lines) if RESULTS.match(line)), None)
     if start is None or end is None or end <= start:
         return False
-    middle = lines[start + 1 : end]
-    completed = [m.group(1) for line in middle if (m := COMPLETE.search(line))]
-    if not completed:
+
+    anchors = [
+        line for line in lines[start + 1 : end] if line.strip() and not PROGRESS.match(line)
+    ]
+    if not anchors:
         return False
-    rebuilt = (
-        lines[: start + 1]
-        + ["..."]
-        + [f"[..] Download complete: {path}" for path in completed]
-        + ["..."]
-        + lines[end:]
-    )
+
+    rebuilt = lines[: start + 1]
+    for anchor in anchors:
+        rebuilt.extend(["...", anchor])
+    rebuilt.extend(["...", *lines[end:]])
     path.write_text("\n".join(rebuilt) + "\n")
     return True
 
