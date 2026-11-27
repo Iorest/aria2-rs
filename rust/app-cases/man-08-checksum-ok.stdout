@@ -3,12 +3,12 @@
 ...
 11/27 [..] [[1;32mNOTICE[0m] Verification finished successfully. file=downloads/1kib.bin
 ...
-[..] Download complete: downloads/1kib.bin
+[..]NOTICE[..] Download complete: downloads/1kib.bin
 ...
 Download Results:
 gid   |stat|avg speed  |path/URI
 ======+====+===========+=======================================================
-[..]
+[..]|OK  |[..]|downloads/1kib.bin
 
 Status Legend:
-...
+(OK):download completed.
