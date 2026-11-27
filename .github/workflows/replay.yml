@@ -24,7 +24,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y autoconf automake autopoint libtool \
             pkg-config gettext python3-pip libssl-dev lsof curl
-          python3 -m pip install --break-system-packages pyftpdlib
+          python3 -m pip install --break-system-packages pyftpdlib cryptography
 
       - name: Install rust-anything 4.2.0 (pinned by docs/RECORD-CASES.md)
         run: cargo install rust-anything --version 4.2.0 --locked
@@ -39,7 +39,7 @@ jobs:
           tar xf "$TARBALL" -C env/tarball
           cd env/tarball/aria2-1.37.0
           ./configure --prefix="$PWD/../../aria2-1.37.0" \
-            --with-openssl --without-gnutls --without-libxml2 \
+            --with-openssl --without-appletls --without-gnutls --without-libxml2 \
             --without-libexpat --disable-nls
           make -j"$(nproc)" && make install
           sha256sum ../../aria2-1.37.0/bin/aria2c
@@ -56,7 +56,7 @@ jobs:
              | grep -vE '127\.0\.0\.1|localhost'; then
             echo 'FAIL: non-loopback URI'; exit 1
           fi
-          if grep -rnE 'creds\.json|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY' \
+          if grep -rnE 'creds\.json|BEGIN [A-Z ]*PRIVATE KEY' \
              rust/app-cases cases; then
             echo 'FAIL: credential leak'; exit 1
           fi
@@ -64,11 +64,22 @@ jobs:
       - name: Build Rust front door
         run: cargo build --manifest-path rust/app/Cargo.toml
 
+      - name: G1 positive HTTPS/FTP coverage
+        run: |
+          for case in man-11-https-single man-12-https-multi \
+                      man-13-ftp-single man-14-ftp-secret man-04-http-ftp; do
+            grep -q 'status.code = 0' "rust/app-cases/$case.toml"
+            test -d "rust/app-cases/$case.out"
+          done
+
       - name: G1 - original replay 100%
         run: rust-anything app replay . --build "$RUN"
 
       - name: G2 - front-door replay 100%, fallback 100%
         run: rust-anything app replay . --build rust/app/target/debug/aria2c
+
+      - name: GID mapping comparator (EQUIVALENCE N1)
+        run: python3 test-env/check-gid-consistency.py rust/app/target/debug/aria2c
 
       - name: G3 - replay report zero drift
         run: git diff --exit-code -- rust/app-cases

@@ -90,12 +90,18 @@ check() {
   curl -fsS --max-time 3 --cacert test-env/certs/ca.crt \
     "https://127.0.0.1:${HTTPS_PORT}/1kib.bin" -o /dev/null
   FTP_USER="$FTP_USER" FTP_PASS="$FTP_PASS" FTP_PORT="$FTP_PORT" python3 - <<'PY'
-import ftplib, os
+import ftplib, io, os
+
 with ftplib.FTP() as ftp:
     ftp.connect("127.0.0.1", int(os.environ["FTP_PORT"]), timeout=5)
     ftp.login(os.environ["FTP_USER"], os.environ["FTP_PASS"])
     ftp.voidcmd("TYPE I")
     assert ftp.size("1kib.bin") == 1024
+    # CWD into the secret subdirectory used by man-14; pyftpdlib needs 'e'.
+    ftp.cwd("secret")
+    body = io.BytesIO()
+    ftp.retrbinary("RETR 1kib.bin", body.write)
+    assert len(body.getvalue()) == 1024
 PY
   echo "HTTP/HTTPS/FTP loopback checks passed"
 }

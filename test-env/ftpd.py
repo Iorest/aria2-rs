@@ -19,10 +19,10 @@ USER = os.environ.get("FTP_USER", "aria2test")
 PASS = os.environ.get("FTP_PASS", "test-only")
 DIRECTORY = os.path.join(ROOT, "fixtures", "ftp")
 
-# 'r' + 'l' (read and list) are needed for RETR, SIZE and directory listing.
-# No write/delete permission is granted: the fixture tree stays read-only.
+# 'e' (change directory) is required for aria2's CWD into /secret; 'l' + 'r'
+# cover LIST, SIZE and RETR. No write/delete permission is granted.
 authorizer = DummyAuthorizer()
-authorizer.add_user(USER, PASS, DIRECTORY, perm="rl")
+authorizer.add_user(USER, PASS, DIRECTORY, perm="elr")
 handler = FTPHandler
 handler.authorizer = authorizer
 handler.banner = "aria2-rs loopback test FTP server"
