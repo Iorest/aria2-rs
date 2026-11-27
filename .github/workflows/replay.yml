@@ -34,6 +34,9 @@ jobs:
           git clone --depth 1 --branch release-1.37.0 \
             https://github.com/aria2/aria2.git env/aria2-src
           cd env/aria2-src
+          # aria2 1.37.0 ships a gettext-0.18 po/Makefile.in.in; refresh it with
+          # the runner's gettext before autoreconf, otherwise make fails in po/.
+          autopoint --force
           autoreconf -fi
           ./configure --prefix="$PWD/../aria2-1.37.0" \
             --with-openssl --without-gnutls --without-libxml2 \
