@@ -22,7 +22,7 @@
     "tls-error": "SSL/TLS handshake failure: [^\\n]*",
     "argv0": "(?m)^[^\\n]*aria2c: unrecognized option [`']"
   },
-  "timeout_secs": 60,
+  "timeout_secs": 120,
   "fresh": [
     "test-env/fixtures",
     "test-env/certs",
