@@ -22,8 +22,8 @@ jobs:
       - name: Install build and test dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y autoconf automake libtool pkg-config gettext \
-            libssl-dev lsof curl
+          sudo apt-get install -y autoconf automake autopoint libtool \
+            pkg-config gettext python3-pip libssl-dev lsof curl
           python3 -m pip install --break-system-packages pyftpdlib
 
       - name: Install rust-anything 4.2.0 (pinned by docs/RECORD-CASES.md)
@@ -39,7 +39,7 @@ jobs:
             --with-openssl --without-gnutls --without-libxml2 \
             --without-libexpat --disable-nls
           make -j"$(nproc)" && make install
-          shasum -a 256 ../aria2-1.37.0/bin/aria2c
+          sha256sum ../aria2-1.37.0/bin/aria2c
 
       - name: Prepare fixtures and loopback servers
         run: |
