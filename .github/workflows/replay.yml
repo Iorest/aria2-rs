@@ -73,6 +73,10 @@ jobs:
       - name: G3 - replay report zero drift
         run: git diff --exit-code -- rust/app-cases
 
+      - name: Dump replay diff on failure
+        if: failure()
+        run: cat rust/app-cases/replay-report.md || true
+
       - name: Stop loopback servers
         if: always()
         run: test-env/serve.sh stop
