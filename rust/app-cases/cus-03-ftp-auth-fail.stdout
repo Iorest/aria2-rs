@@ -1,15 +1,20 @@
 
-11/28 [..] [[1;32mNOTICE[0m] Downloading 1 item(s)
+[..] [..] [[1;32mNOTICE[0m] Downloading 1 item(s)
+...
 [#[..] 0B/0B CN:1 DL:0B]
+...
 [#[..] 0B/0B CN:1 DL:0B]
+...
 [#[..] 0B/0B CN:1 DL:0B]
-
-11/28 [..] [[1;31mERROR[0m] CUID#7 - Download aborted. URI=ftp://127.0.0.1:1821/1kib.bin
-Exception: [..] errorCode=21 URI=ftp://127.0.0.1:1821/1kib.bin
-  -> [..] errorCode=21 The response status is not successful. status=530
-
-11/28 [..] [[1;32mNOTICE[0m] Download GID#[..] not complete: 
-
+...
+[..] [..] [[1;31mERROR[0m] CUID#7 - Download aborted. URI=ftp://127.0.0.1:1821/1kib.bin
+...
+Exception: [AbstractCommand.cc:[..] errorCode=21 URI=ftp://127.0.0.1:1821/1kib.bin
+...
+  -> [FtpNegotiationCommand.cc:[..] errorCode=21 The response status is not successful. status=530
+...
+[..] [..] [[1;32mNOTICE[0m] Download GID#[..] not complete: 
+...
 Download Results:
 gid   |stat|avg speed  |path/URI
 ======+====+===========+=======================================================

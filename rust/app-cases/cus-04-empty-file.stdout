@@ -1,7 +1,7 @@
 
-11/28 [..] [[1;32mNOTICE[0m] Downloading 1 item(s)
+[..] [..] [[1;32mNOTICE[0m] Downloading 1 item(s)
 ...
-[..] Download complete: downloads/empty.bin
+[..] [..] [[1;32mNOTICE[0m] Download complete: downloads/empty.bin
 ...
 Download Results:
 gid   |stat|avg speed  |path/URI

@@ -1,7 +1,9 @@
 
-11/28 [..] [[1;32mNOTICE[0m] Downloading 1 item(s)
+[..] [..] [[1;32mNOTICE[0m] Downloading 1 item(s)
 ...
-[..] Download complete: downloads/1kib.bin
+[..] [..] [[1;31mERROR[0m] Failed to load cookies from missing-input.txt
+...
+[..] [..] [[1;32mNOTICE[0m] Download complete: downloads/1kib.bin
 ...
 Download Results:
 gid   |stat|avg speed  |path/URI
