@@ -194,6 +194,7 @@ rust-anything app record . --timeout 120 \
      --max-tries=1 --retry-wait=0 \
      --ca-certificate=test-env/certs/ca.crt
 test-env/scrub-cases.sh       # 删除录制品中的 *.key 并以 PKCS#8 正则复核
+python3 test-env/normalize-progress.py  # N3/N9：通配进度读出/摘要行
 
 
 # (5) 回放：原版与 Rust 前门都必须 100%
