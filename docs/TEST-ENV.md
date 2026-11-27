@@ -48,7 +48,7 @@ aria2-rs/
 
 隔离规则：
 
-1. **进程隔离**：所有 aria2c / 用例进程以 `HOME=<repo>/test-env/home`（空目录）运行，杜绝读到用户 `~/.aria2/aria2.conf`、`~/.netrc` 等任何用户态配置；另显式 `--no-conf` 双保险。
+1. **进程隔离**：录制命令以 `HOME=<repo>/test-env/home`（空目录）启动，并显式 `--no-conf` 双保险。已知限制：rust-anything 的 replay sandbox 不继承该 HOME（实测仍为用户 HOME）；因 `--no-conf` 生效且用例只连 loopback，当前配置无用户态配置可读，但严格 HOME 隔离尚未实现（阶段 2 补 case 级 env 或 wrapper）。
 2. **写隔离**：aria2c 一律 `--dir=downloads`（相对 cwd）；`.aria2` 控制文件与日志都落在该子树，不落 repo 其他位置、不落 `$HOME`。
 3. **case 隔离**：`app record --fresh <路径>` 把 fixtures / certs / downloads 快照进每个用例独立的全新工作目录，用例结束后对「写了什么 / 删了什么」做 diff —— 这是下载产物比对（EQUIVALENCE §下载产物）的机制基础。
    ✅ **TELE-97 实测**：布局不扁平化——快照落在 `<case>/files/test-env/fixtures/...`、`files/test-env/certs/...`、`files/downloads/...`，cases 与 `--ca-certificate` 的相对路径无需改写。
@@ -195,6 +195,7 @@ rust-anything app record . --timeout 120 \
      --ca-certificate=test-env/certs/ca.crt
 test-env/scrub-cases.sh       # 删除录制品中的 *.key 并以 PKCS#8 正则复核
 python3 test-env/normalize-progress.py  # N3/N9：通配进度读出/摘要行
+python3 test-env/restore-tables.py      # 恢复成功用例结果表的 OK/路径/图例逐字断言
 
 
 # (5) 回放：原版与 Rust 前门都必须 100%
