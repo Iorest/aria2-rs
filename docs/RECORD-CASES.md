@@ -77,7 +77,7 @@ TELE-96（0.8）交付物。阶段 1 任务（TELE-97）可直接引用 §3 与 
 - **录制来源核对**：录制完成时核对工具输出 `N from examples / M from inputs / K traps` 行与「Noise, …」归类行，确认与 §2 预期一致（预期 examples=0）。
 - **跨行 GID**：自动通配不校验跨行耦合；阶段 1 已落地 `test-env/check-gid-consistency.py`（EQUIVALENCE N1），逐次运行把结果表短 GID 与 `GID#` 长 GID 做成一一映射断言，作为 G2 后的 CI 步骤。
 - **正向覆盖与私钥**：HTTPS/FTP 正向用例必须 `exit 0` 且 `.out/` 有产物（CI 加显式断言）；录制品经 `test-env/scrub-cases.sh` 删除 `*.key`，scrub 正则覆盖 PKCS#8 `BEGIN [A-Z ]*PRIVATE KEY`。证书由 `test-env/gen_certs.py` 可复现生成：同一密钥对/信任锚，ECDSA 签名随机故字节不保证相同。
-- **进度行批量归一化**：`test-env/normalize-progress.py` 在录制后对 22 个含下载通知的用例只删除 `[#GID ...]`、`*** Download Progress Summary ... ***` 等进度形状的行，并在保留的每条通知前插入 `...`；NOTICE 级别、`Verification finished successfully`、完成路径、退出码与结果表仍是逐字锚点。这是 EQUIVALENCE N3/N9 的 trycmd 表达。逐个用例手补已被证明会遗漏（man-14→man-13），故改为一次性工具化处理。
+- **进度行批量归一化**：`test-env/normalize-progress.py` 在录制后对 22 个含下载通知的用例只删除 `[#GID ...]`、`*** Download Progress Summary ... ***` 等进度形状的行，以及 macOS 独有的 `Allocating disk space` 提示（平台噪声），并在保留的每条通知前插入 `...`；NOTICE 级别、`Verification finished successfully`、完成路径、退出码与结果表仍是逐字锚点。脚本幂等（先去掉旧 `...` 再重建）。这是 EQUIVALENCE N3/N9 的 trycmd 表达。录制前必须确保 `downloads/` 只有 setup 生成的夹具状态，否则初始文件会被快照进 `files/` 并让回放判定「未写入」。
 
 ## 5. CI 比对方案（replay-report.md 闸门）
 

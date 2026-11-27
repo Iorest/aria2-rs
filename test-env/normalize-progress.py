@@ -28,7 +28,9 @@ def patch(path: Path) -> bool:
         return False
 
     anchors = [
-        line for line in lines[start + 1 : end] if line.strip() and not PROGRESS.match(line)
+        line
+        for line in lines[start + 1 : end]
+        if line.strip() and line != "..." and not PROGRESS.match(line)
     ]
     if not anchors:
         return False
