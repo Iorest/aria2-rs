@@ -16,7 +16,7 @@ DOWNLOADING = re.compile(r"Downloading \d+ item\(s\)")
 RESULTS = re.compile(r"^Download Results:")
 PROGRESS = re.compile(
     r"^\[#[0-9a-f]{6} |^\*\*\* Download Progress Summary"
-    r"|^={10,}$|^-{10,}$|^FILE: |^\[FileAlloc:#"
+    r"|^={10,}$|^-{10,}$|^FILE: |^\[FileAlloc:#|^.*Allocating disk space"
 )
 
 
