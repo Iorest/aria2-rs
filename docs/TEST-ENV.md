@@ -213,6 +213,7 @@ rust-anything app replay . --build rust/app/target/debug/aria2c  # 预期: 185/1
 - `cases/stage1.jsonl`：每行一个用例 `{"name", "args": [...]}`（必要时含 `"env"` / `"files"`），URI 全部指向 127.0.0.1；用例清单来源与阶段 1 验收标准见 TELE-96（0.8）。
 - record 对每例连跑两次并自动归类噪声；两跑一致的固定值（时间戳、零速 `n/a`）不会自动通配，replay 跨分钟运行必然失配，故 §8 显式加 `timestamps` 与 `speed=...` 两个 normalizer（在比对两侧把值替换为 `[..]`，不改录制品原文）。`-j2` 并发下载行的顺序抖动由用例文件中的 `[..]` 整行通配吸收。
 - 用例失败时先读 `rust/app-cases/` 报告里的 diff，再单 case 复跑：`rust-anything app replay . --case <name>`。
+- **CI 构建输入（TELE-97 实测修订）**：GitHub Actions 的 Ubuntu runner 不能用 `autoreconf` 从源码 clone 构建——aria2 1.37.0 自带 gettext 0.18 的 `po/Makefile.in.in` 与 runner 的 0.22 宏冲突（`make` 报 `check-macro-version` Error 1；`autopoint --force` 亦无效，连续两轮）。按 owner 授权改用同一 tag 的官方 release tarball：`https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0.tar.xz`，SHA-256 `60a420ad7085eb616cb6e2bdf0a7206d68ff3d37fb5a956dc44242eb2f79b66b`，校验后直接 `./configure`（无 autoreconf），安装前缀与本地一致。tarball 二进制本机 G1 复测 185/185（4 次），与源码构建行为等价；本地复现命令仍保留源码 clone 路径。
 - 构建依赖以 aria2 官方 README 为准；`--without-libssh2` 是阶段 1 基线，阶段 6 重建（加 `--with-libssh2`）后重录 FTP/SFTP 用例并在 `rust/DECISIONS.md` 记 ADR。
 
 ## 9. 验收对照

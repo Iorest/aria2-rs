@@ -31,18 +31,18 @@ jobs:
 
       - name: Build pinned original aria2 1.37.0
         run: |
-          git clone --depth 1 --branch release-1.37.0 \
-            https://github.com/aria2/aria2.git env/aria2-src
-          cd env/aria2-src
-          # aria2 1.37.0 ships a gettext-0.18 po/Makefile.in.in; refresh it with
-          # the runner's gettext before autoreconf, otherwise make fails in po/.
-          autopoint --force
-          autoreconf -fi
-          ./configure --prefix="$PWD/../aria2-1.37.0" \
+          TARBALL=aria2-1.37.0.tar.xz
+          curl -fL --retry 3 -o "$TARBALL" \
+            https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0.tar.xz
+          echo '60a420ad7085eb616cb6e2bdf0a7206d68ff3d37fb5a956dc44242eb2f79b66b  aria2-1.37.0.tar.xz' | sha256sum -c -
+          mkdir -p env/tarball
+          tar xf "$TARBALL" -C env/tarball
+          cd env/tarball/aria2-1.37.0
+          ./configure --prefix="$PWD/../../aria2-1.37.0" \
             --with-openssl --without-gnutls --without-libxml2 \
             --without-libexpat --disable-nls
           make -j"$(nproc)" && make install
-          sha256sum ../aria2-1.37.0/bin/aria2c
+          sha256sum ../../aria2-1.37.0/bin/aria2c
 
       - name: Prepare fixtures and loopback servers
         run: |
