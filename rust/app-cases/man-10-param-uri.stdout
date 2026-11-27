@@ -1,15 +1,15 @@
 
-11/27 [..] [[1;32mNOTICE[0m] Downloading 2 item(s)
+11/28 [..] [[1;32mNOTICE[0m] Downloading 2 item(s)
 
-...
-11/27 [..] [[1;32mNOTICE[0m] Download complete: downloads/empty.bin
+[..]
 
-...
+[..]
+
 Download Results:
 gid   |stat|avg speed  |path/URI
 ======+====+===========+=======================================================
-[..]|OK  |[..]|downloads/[..].bin
-[..]|OK  |[..]|downloads/[..].bin
+[..]
+[..]
 
 Status Legend:
 (OK):download completed.

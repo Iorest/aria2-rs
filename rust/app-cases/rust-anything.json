@@ -17,10 +17,9 @@
     "timestamps"
   ],
   "normalizers": {
+    "argv0": "(?m)^[^\\n]*aria2c: unrecognized option [`']",
     "speed": "\\s+(?:n/a|[0-9]+(?:\\.[0-9]+)?[KMGTP]?i?B/s)",
-    "src-line": "\\[[A-Za-z0-9_.-]+\\.cc:\\d+\\]",
-    "tls-error": "SSL/TLS handshake failure: [^\\n]*",
-    "argv0": "(?m)^[^\\n]*aria2c: unrecognized option [`']"
+    "src-line": "\\[[A-Za-z0-9_.-]+\\.cc:\\d+\\]"
   },
   "timeout_secs": 120,
   "fresh": [

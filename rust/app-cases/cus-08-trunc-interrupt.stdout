@@ -1,10 +1,10 @@
 
-11/27 [..] [[1;32mNOTICE[0m] Downloading 1 item(s)
+11/28 [..] [[1;32mNOTICE[0m] Downloading 1 item(s)
 
-11/27 [..] [[1;31mERROR[0m] CUID#7 - Download aborted. URI=http://127.0.0.1:18080/trunc/1mib.bin/4096
-Exception: [DownloadCommand.cc:234] errorCode=1 Got EOF from the server.
+11/28 [..] [[1;31mERROR[0m] CUID#7 - Download aborted. URI=http://127.0.0.1:18080/trunc/1mib.bin/4096
+Exception: [..] errorCode=1 Got EOF from the server.
 
-11/27 [..] [[1;32mNOTICE[0m] Download GID#[..] not complete: downloads/4096
+11/28 [..] [[1;32mNOTICE[0m] Download GID#[..] not complete: downloads/4096
 
 Download Results:
 gid   |stat|avg speed  |path/URI

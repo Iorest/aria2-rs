@@ -1,3 +1,3 @@
 Exception caught
-Exception: [download_helper.cc:563] errorCode=1 Failed to open the file missing-input.txt, cause: File not found or it is a directory
+Exception: [..] errorCode=1 Failed to open the file missing-input.txt, cause: File not found or it is a directory
 
