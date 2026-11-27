@@ -1,0 +1,20 @@
+{
+	auto_https off
+}
+
+:18080 {
+	root * test-env/fixtures/http
+	handle /trunc/* {
+		reverse_proxy 127.0.0.1:18081
+	}
+	file_server
+}
+
+:18443 {
+	root * test-env/fixtures/http
+	tls test-env/certs/server.crt test-env/certs/server.key
+	handle /trunc/* {
+		reverse_proxy 127.0.0.1:18081
+	}
+	file_server
+}

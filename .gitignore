@@ -1,0 +1,11 @@
+/env/
+/target/
+/test-env/certs/
+/test-env/fixtures/
+/test-env/home/
+/test-env/run/
+/test-env/creds.json
+/downloads/*
+__pycache__/
+*.pyc
+!/downloads/.gitkeep

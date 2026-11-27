@@ -1,0 +1,75 @@
+name: replay
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RUN: >-
+        env/aria2-1.37.0/bin/aria2c --no-conf --dir=downloads
+        --allow-overwrite=true --auto-file-renaming=false
+        --all-proxy=http://127.0.0.1:9 --no-proxy=127.0.0.1,localhost
+        --max-tries=1 --retry-wait=0
+        --ca-certificate=test-env/certs/ca.crt
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build and test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y autoconf automake libtool pkg-config gettext \
+            libssl-dev lsof curl
+          python3 -m pip install --break-system-packages pyftpdlib
+
+      - name: Install rust-anything 4.2.0 (pinned by docs/RECORD-CASES.md)
+        run: cargo install rust-anything --version 4.2.0 --locked
+
+      - name: Build pinned original aria2 1.37.0
+        run: |
+          git clone --depth 1 --branch release-1.37.0 \
+            https://github.com/aria2/aria2.git env/aria2-src
+          cd env/aria2-src
+          autoreconf -fi
+          ./configure --prefix="$PWD/../aria2-1.37.0" \
+            --with-openssl --without-gnutls --without-libxml2 \
+            --without-libexpat --disable-nls
+          make -j"$(nproc)" && make install
+          shasum -a 256 ../aria2-1.37.0/bin/aria2c
+
+      - name: Prepare fixtures and loopback servers
+        run: |
+          test-env/setup.sh
+          test-env/serve.sh start
+          test-env/serve.sh check
+
+      - name: G0 - network and credential boundary
+        run: |
+          if grep -rnE '(https?|ftp)://' rust/app-cases cases \
+             | grep -vE '127\.0\.0\.1|localhost'; then
+            echo 'FAIL: non-loopback URI'; exit 1
+          fi
+          if grep -rnE 'creds\.json|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY' \
+             rust/app-cases cases; then
+            echo 'FAIL: credential leak'; exit 1
+          fi
+
+      - name: Build Rust front door
+        run: cargo build --manifest-path rust/app/Cargo.toml
+
+      - name: G1 - original replay 100%
+        run: rust-anything app replay . --build "$RUN"
+
+      - name: G2 - front-door replay 100%, fallback 100%
+        run: rust-anything app replay . --build rust/app/target/debug/aria2c
+
+      - name: G3 - replay report zero drift
+        run: git diff --exit-code -- rust/app-cases
+
+      - name: Stop loopback servers
+        if: always()
+        run: test-env/serve.sh stop
