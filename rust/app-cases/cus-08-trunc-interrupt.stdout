@@ -1,0 +1,18 @@
+
+11/27 [..] [[1;32mNOTICE[0m] Downloading 1 item(s)
+
+11/27 [..] [[1;31mERROR[0m] CUID#7 - Download aborted. URI=http://127.0.0.1:18080/trunc/1mib.bin/4096
+Exception: [DownloadCommand.cc:234] errorCode=1 Got EOF from the server.
+
+11/27 [..] [[1;32mNOTICE[0m] Download GID#[..] not complete: downloads/4096
+
+Download Results:
+gid   |stat|avg speed  |path/URI
+======+====+===========+=======================================================
+[..]|ERR |[..]|downloads/4096
+
+Status Legend:
+(ERR):error occurred.
+
+aria2 will resume download if the transfer is restarted.
+If there are any errors, then see the log file. See '-l' option in help/man page for details.

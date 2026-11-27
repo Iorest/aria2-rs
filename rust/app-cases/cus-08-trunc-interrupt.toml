@@ -1,0 +1,4 @@
+bin.name = "aria2c"
+args = ["http://127.0.0.1:18080/trunc/1mib.bin/4096"]
+status.code = 1
+fs.sandbox = true

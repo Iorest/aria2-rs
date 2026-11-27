@@ -1,0 +1,4 @@
+bin.name = "aria2c"
+args = ["-x2", "-k1M", "👨‍👩‍👧 family"]
+status.code = 1
+fs.sandbox = true

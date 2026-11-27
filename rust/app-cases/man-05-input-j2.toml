@@ -1,0 +1,5 @@
+bin.name = "aria2c"
+args = ["-i", "files.txt", "-j2"]
+status.code = 0
+fs.sandbox = true
+fs.base = "man-05-input-j2.in"

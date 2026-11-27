@@ -1,0 +1,3 @@
+Exception caught
+Exception: [download_helper.cc:451] errorCode=1 Unrecognized URI or unsupported protocol: 日本語
+

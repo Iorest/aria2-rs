@@ -1,0 +1,14 @@
+
+11/27 [..] [[1;32mNOTICE[0m] Downloading 1 item(s)
+
+11/27 [..] [[1;32mNOTICE[0m] Allocating disk space. Use --file-allocation=none to disable it. See --file-allocation option in man page for more details.
+
+11/27 [..] [[1;32mNOTICE[0m] Download complete: downloads/21mib.bin
+
+Download Results:
+gid   |stat|avg speed  |path/URI
+======+====+===========+=======================================================
+[..]|OK  |[..]|downloads/21mib.bin
+
+Status Legend:
+(OK):download completed.

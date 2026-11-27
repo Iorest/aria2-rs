@@ -1,0 +1,4 @@
+bin.name = "aria2c"
+args = ["--checksum=sha-1=5b00669c480d5cffbdfa8bdba99561160f2d1b77", "👨‍👩‍👧 family"]
+status.code = 1
+fs.sandbox = true

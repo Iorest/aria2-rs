@@ -1,0 +1,5 @@
+bin.name = "aria2c"
+args = ["--load-cookies", "cookies.txt", "İstanbul"]
+status.code = 1
+fs.sandbox = true
+fs.base = "trap-094-load-cookies.in"

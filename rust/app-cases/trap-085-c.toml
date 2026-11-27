@@ -1,0 +1,4 @@
+bin.name = "aria2c"
+args = ["-c", "-s2", "İstanbul"]
+status.code = 1
+fs.sandbox = true

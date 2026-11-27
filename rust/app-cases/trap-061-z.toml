@@ -1,0 +1,4 @@
+bin.name = "aria2c"
+args = ["-Z", "-P", ""]
+status.code = 0
+fs.sandbox = true
