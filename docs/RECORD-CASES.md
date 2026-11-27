@@ -73,7 +73,7 @@ TELE-96（0.8）交付物。阶段 1 任务（TELE-97）可直接引用 §3 与 
 
 命令即 TEST-ENV §8(4)（`--fresh test-env/fixtures --fresh test-env/certs --fresh downloads --inputs cases/stage1.jsonl`）。补充三点（均 4.2.0 实测）：
 
-- **归一化机制：自动噪声 + 两个具名 normalizer**（TELE-97 实测修订 v0.4）。record 双跑仍自动把不一致值打成 `[..]`；但两跑恰好一致的固定值不会被通配：跨分钟回放时时间戳必失配，零速 `n/a` 与随机速率也会互换。实测有效的两条规则写入 `rust-anything.json`：`timestamps`（内建）与 `speed=\s+(?:n/a|[0-9]+(?:\.[0-9]+)?[KMGTP]?i?B/s)`（具名 regex，比对两侧替换成 `[..]`）。v0.2 记录的「`name=regex` 无效」来自当时错误的正则写法，正确语法在本机 4.2.0 生效；归一化只作用于比对，不改 trycmd 原文。`-j2` 并发完成顺序抖动由 `man-05` 用例的整行 `[..]` 吸收。
+- **归一化机制：自动噪声 + 具名 normalizer**（TELE-97 实测修订 v0.4/v0.5）。record 双跑仍自动把不一致值打成 `[..]`；但两跑恰好一致的固定值不会被通配：跨分钟回放时时间戳必失配，零速 `n/a` 与随机速率也会互换。写入 `rust-anything.json` 的规则：`timestamps`（内建）与 `speed`、`src-line`、`tls-error`、`argv0` 四条具名 regex（比对两侧替换成 `[..]`，不改 trycmd 原文）。后三条来自 Ubuntu↔macOS 实测差异：aria2 错误行里的源码行号（`HttpSkipResponseCommand.cc:219/218` 等）、TLS 文案（`Invalid certificate chain` vs `unable to get local issuer certificate`）、getopt 的 argv[0]（`aria2c:` vs 绝对路径）；均属 EQUIVALENCE 允许归一化的平台噪声，错误码与 URI 仍逐字比对。`-j2` 完成顺序抖动由 `man-05` 用例的整行 `[..]` 吸收；只在 macOS 出现的 `Allocating disk space` 提示由 `man-03` 用例的 `...` 行吸收。v0.2 记录的「`name=regex` 无效」来自当时错误的正则写法，正确语法在本机 4.2.0 生效。
 - **录制来源核对**：录制完成时核对工具输出 `N from examples / M from inputs / K traps` 行与「Noise, …」归类行，确认与 §2 预期一致（预期 examples=0）。
 - **通配的边界**：自动通配只保证「模式相同、值可变」；若 aria2 输出中出现跨行耦合的动态内容（如 GID 在 A 行出现、B 行引用），通配不校验一致性——该风险由 EQUIVALENCE N1 的映射式比较器（阶段 1 落地）兜底，trycmd 层不作保证。
 
