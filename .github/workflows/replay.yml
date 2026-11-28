@@ -58,6 +58,7 @@ jobs:
           fi
           if grep -rnE 'creds\.json|BEGIN [A-Z ]*PRIVATE KEY' \
              rust/app-cases rpc-cases/rust/app-cases cases; then
+            echo 'FAIL: credential leak'; exit 1
           fi
 
       - name: Build Rust front door
