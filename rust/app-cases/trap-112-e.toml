@@ -1,0 +1,4 @@
+bin.name = "aria2c"
+args = ["é", "http://localhost:18080/1mib.bin"]
+status.code = 1
+fs.sandbox = true

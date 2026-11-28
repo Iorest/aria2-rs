@@ -1,0 +1,4 @@
+bin.name = "aria2c"
+args = ["--dry-run", "ılık ırmak"]
+status.code = 1
+fs.sandbox = true

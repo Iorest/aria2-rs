@@ -1,0 +1,23 @@
+{"name":"man-01-single-http","args":["http://127.0.0.1:18080/1mib.bin"]}
+{"name":"man-02-two-uris","args":["http://127.0.0.1:18080/1mib.bin","http://localhost:18080/1mib.bin"]}
+{"name":"man-03-multi-conn","args":["-x2","-k1M","http://127.0.0.1:18080/21mib.bin"]}
+{"name":"man-04-http-ftp","args":["http://127.0.0.1:18080/1kib.bin","--ftp-user=aria2test","--ftp-passwd=zzz123","ftp://127.0.0.1:1821/1kib.bin"]}
+{"name":"man-05-input-j2","args":["-i","files.txt","-j2"],"files":{"files.txt":"http://127.0.0.1:18080/1kib.bin\nhttp://127.0.0.1:18080/empty.bin\n"}}
+{"name":"man-06-cookies","args":["--load-cookies","cookies.txt","http://127.0.0.1:18080/1kib.bin"],"files":{"cookies.txt":"# Netscape HTTP Cookie File\n127.0.0.1\tFALSE\t/\tFALSE\t0\taria2test\t1\n"}}
+{"name":"man-07-resume-partial","args":["-c","-s2","http://127.0.0.1:18080/1mib.bin"]}
+{"name":"man-08-checksum-ok","args":["--checksum=sha-1=5b00669c480d5cffbdfa8bdba99561160f2d1b77","http://127.0.0.1:18080/1kib.bin"]}
+{"name":"man-09-checksum-bad","args":["--checksum=sha-1=5b00669c480d5cffbdfa8bdba99561160f2d1b78","http://127.0.0.1:18080/1kib.bin"]}
+{"name":"man-10-param-uri","args":["-Z","-P","http://127.0.0.1:18080/{1kib.bin,empty.bin}"]}
+{"name":"man-11-https-single","args":["https://127.0.0.1:18443/1mib.bin"]}
+{"name":"man-12-https-multi","args":["-x2","-k1M","https://127.0.0.1:18443/21mib.bin"]}
+{"name":"man-13-ftp-single","args":["--ftp-user=aria2test","--ftp-passwd=zzz123","ftp://127.0.0.1:1821/1mib.bin"]}
+{"name":"man-14-ftp-secret","args":["--ftp-user=aria2test","--ftp-passwd=zzz123","ftp://127.0.0.1:1821/secret/1kib.bin"]}
+{"name":"cus-01-bad-uri","args":[":not-a-uri"]}
+{"name":"cus-02-http-404","args":["http://127.0.0.1:18080/nonexistent.bin"]}
+{"name":"cus-03-ftp-auth-fail","args":["ftp://127.0.0.1:1821/1kib.bin"]}
+{"name":"cus-04-empty-file","args":["http://127.0.0.1:18080/empty.bin"]}
+{"name":"cus-05-dry-run","args":["--dry-run","http://127.0.0.1:18080/1kib.bin"]}
+{"name":"cus-06-unknown-option","args":["--not-an-option"]}
+{"name":"cus-07-multi-argv-j2","args":["-j2","http://127.0.0.1:18080/1kib.bin","https://127.0.0.1:18443/1kib.bin"]}
+{"name":"cus-08-trunc-interrupt","args":["http://127.0.0.1:18080/trunc/1mib.bin/4096"]}
+{"name":"cus-09-resume-control","args":["-c","http://127.0.0.1:18080/1mib.bin"]}

@@ -1,0 +1,4 @@
+bin.name = "aria2c"
+args = ["ftp://127.0.0.1:1821/1kib.bin"]
+status.code = 21
+fs.sandbox = true

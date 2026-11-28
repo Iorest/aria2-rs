@@ -1,0 +1,4 @@
+bin.name = "aria2c"
+args = ["-x2", "-k1M", "https://127.0.0.1:18443/21mib.bin"]
+status.code = 0
+fs.sandbox = true

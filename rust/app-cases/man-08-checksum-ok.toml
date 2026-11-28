@@ -1,0 +1,4 @@
+bin.name = "aria2c"
+args = ["--checksum=sha-1=5b00669c480d5cffbdfa8bdba99561160f2d1b77", "http://127.0.0.1:18080/1kib.bin"]
+status.code = 0
+fs.sandbox = true

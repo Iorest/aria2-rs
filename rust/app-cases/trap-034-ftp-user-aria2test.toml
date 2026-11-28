@@ -1,0 +1,4 @@
+bin.name = "aria2c"
+args = ["--ftp-user=aria2test", "--ftp-passwd=zzz123", "日本語"]
+status.code = 1
+fs.sandbox = true

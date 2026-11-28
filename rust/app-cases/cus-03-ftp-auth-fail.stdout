@@ -1,0 +1,27 @@
+
+[..] [..] [[1;32mNOTICE[0m] Downloading 1 item(s)
+...
+[#[..] 0B/0B CN:1 DL:0B]
+...
+[#[..] 0B/0B CN:1 DL:0B]
+...
+[#[..] 0B/0B CN:1 DL:0B]
+...
+[..] [..] [[1;31mERROR[0m] CUID#7 - Download aborted. URI=ftp://127.0.0.1:1821/1kib.bin
+...
+Exception: [AbstractCommand.cc:[..] errorCode=21 URI=ftp://127.0.0.1:1821/1kib.bin
+...
+  -> [FtpNegotiationCommand.cc:[..] errorCode=21 The response status is not successful. status=530
+...
+[..] [..] [[1;32mNOTICE[0m] Download GID#[..] not complete: 
+...
+Download Results:
+gid   |stat|avg speed  |path/URI
+======+====+===========+=======================================================
+[..]|ERR |[..]|ftp://127.0.0.1:1821/1kib.bin
+
+Status Legend:
+(ERR):error occurred.
+
+aria2 will resume download if the transfer is restarted.
+If there are any errors, then see the log file. See '-l' option in help/man page for details.

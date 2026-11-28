@@ -1,0 +1,5 @@
+bin.name = "aria2c"
+args = ["--load-cookies", "cookies.txt", "http://127.0.0.1:18080/1kib.bin"]
+status.code = 0
+fs.sandbox = true
+fs.base = "man-06-cookies.in"

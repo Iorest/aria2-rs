@@ -80,16 +80,20 @@
 
 | # | 规则 |
 |---|---|
-| N1 | GID：`[#<6hex>` → `[#<GID>`；16 hex 的 gid 字符串 → `<GID>`。比较器用本进程内收集到的真实 GID 做映射，杜绝误替换。 |
+| N1 | GID：`[#<6hex>` → `[#<GID>`；16 hex 的 gid 字符串 → `<GID>`。比较器用本进程内收集到的真实 GID 做映射，杜绝误替换；阶段 1 落地 `test-env/check-gid-consistency.py`，逐次运行断言结果表短 GID 与 `GID#` 长 GID 一一对应。 |
 | N2 | 路径：fixture 沙箱根目录绝对路径 → `<DIR>`；两个实现各用独立沙箱目录，产物比对先转相对路径。 |
 | N3 | 读出与汇总中的动态数值：速率、ETA、百分比、avg speed → `<N>`；`ETA:<h m s>` 整段 → `ETA:<T>`（格式见 `src/util.cc` `secfmt`）。 |
-| N4 | 时间戳：`Progress Summary as of <asctime>`、文件日志行首日期时间 → `<TS>`。 |
+| N4 | 时间戳与日期：文件日志行首的 `MM/DD`（跨时区/跨日录制差异）、`Progress Summary as of <asctime>`、日志行首时间 → `<TS>`。 |
 | N5 | 端口/地址：本地服务器端口 → `<PORT>`；BT peer `IP:port` → `<ADDR>`。 |
 | N6 | JSON：解析后做结构比较（键序无关），字符串值按 N1/N2/N5 归一，数值按 E15 分级。 |
 | N7 | 控制文件：解析二进制后逐字段比对；in-flight piece 条目按 index 排序后作为集合比较（条目内 bitfield 必须逐字节相等）；BT `uploadLength` 只断言 ≥ fixture 起始值。原始字节流不做整体比较。 |
 | N8 | 终端效应：测试一律以管道运行（非 TTY）→ 双方无 `\r` 刷新、无 ANSI 颜色；比较前剥除 `\r` 与 ANSI 转义（防御）。固定 `--enable-color=false` 环境不预设。 |
 | N9 | 行序：按 E3 规则识别并移除进度读出行后，通知/日志行保持相对顺序比较。 |
 | N10 | 行尾空白剥除；不折叠空行（空行是格式的一部分）。 |
+| N11 | 源码位置：aria2 错误行里的 `[File.cc:<line>]` 行号随构建平台不同（实测 macOS/Ubuntu 相差 1–3）→ `<SRCLINE>`；文件名、错误码、URI、消息正文不归一。 |
+| N12 | getopt 用法错误：argv[0] 的绝对路径/程序名差异，以及未知选项的开引号（` vs '）→ `<ARGV0>`；选项名、闭引号、退出码逐字比对。 |
+
+N11/N12 的依据：owner 2026-11-27T15:00:10Z 授权统筹「自主推进」，统筹 15:36:56Z 在 TELE-97 内裁决 argv0 引号归一化，随后沿用同一机制处理 N11 与 N4 的日期差异；属于 E5（stderr）在 §2 的「归一化后一致」。若 owner 后续要求逐条确认 N11/date，按 §7 契约变更流程补确认，不静默扩大口径。对应实现只在比对两侧替换，不修改实现代码或闸门。`speed`/`timestamps` 分别归入 N3/N4。
 
 ## 5. 反作弊与实现纪律（PR 硬门）
 

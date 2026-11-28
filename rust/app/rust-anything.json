@@ -1,0 +1,6 @@
+{
+  "schema": "rust-anything/front-door@1",
+  "name": "aria2c",
+  "commands": [],
+  "units": []
+}

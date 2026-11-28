@@ -1,0 +1,4 @@
+bin.name = "aria2c"
+args = ["http://127.0.0.1:18080/1kib.bin", "--ftp-user=aria2test", "--ftp-passwd=zzz123", "ftp://127.0.0.1:1821/1kib.bin"]
+status.code = 0
+fs.sandbox = true

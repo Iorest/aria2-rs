@@ -1,0 +1,3 @@
+Exception caught
+Exception: [download_helper.cc:[..] errorCode=1 Unrecognized URI or unsupported protocol: straße
+
