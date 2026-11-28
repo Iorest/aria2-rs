@@ -24,8 +24,8 @@
 
 | 单元 | 能力 | fit | 阶段 | 状态 |
 |---|---|---|---|---|
-| `uri-parse` | 宽松 URI 解析（唯一走完整单元 loop 的单元，含 `src/uri_split.c`） | none | 2 | done（TELE-98：`diff` 237/237、`gate` pass、front-door replay 185/185、fallback 100%→50.8%） |
-| `control-file` | .aria2 控制文件二进制格式（契约级，EQUIVALENCE E12） | none | 2 | open |
+| `uri-parse` | 宽松 URI 解析（唯一走完整单元 loop 的单元，含 `src/uri_split.c`） | none | 2 | done（claimed by TELE-98 2026-11-28：`diff` 237/237、`gate` pass、front-door replay 185/185、fallback 100%→50.8%） |
+| `control-file` | .aria2 控制文件二进制格式（契约级，EQUIVALENCE E12） | none | 2 | done（claimed by TELE-98 2026-11-28：非 BT 字段逐字节与 cus-08 golden 一致；BT 扩展留阶段 4） |
 | `rpc-methods` | RPC 方法层（约 30 个方法语义） | none | 3 | open |
 | `rpc-xml` | XML-RPC 服务端（aria2 方言） | none | 3 | open |
 | `bt-peer` | BT 全栈：Peer Wire 消息、choke、PEX、ut_metadata | none | 4 | open |
@@ -38,10 +38,10 @@
 
 | 单元（暂名） | 能力 | 阶段 | 状态 |
 |---|---|---|---|
-| `engine` | 下载引擎核心：DownloadEngine / RequestGroup / SegmentMan / PieceStorage / 调度 | 2 | done（TELE-98：单/多源 HTTP 下载、Range 分段、`-x/-k`、续传、校验、控制文件；app replay 185/185） |
-| `option` | 选项系统（OptionParser / OptionHandlerFactory） | 2 | done（TELE-98：前门必要选项子集，未识别选项回落原版） |
+| `engine` | 下载引擎核心：DownloadEngine / RequestGroup / SegmentMan / PieceStorage / 调度 | 2 | done（claimed by TELE-98 2026-11-28：单/多源 HTTP 下载、Range 分段、`-x/-k`、续传、校验、控制文件；app replay 185/185） |
+| `option` | 选项系统（OptionParser / OptionHandlerFactory） | 2 | done（claimed by TELE-98 2026-11-28：前门必要选项子集，未识别选项回落原版） |
 | `disk` | 磁盘写入与文件分配（falloc/trunc/prealloc） | 2 | open（阶段 2 只实现下载写入与控制文件） |
-| `net-base` | socket 选项 / DNS / TLS / 摘要（tokio + socket2 + rustls + RustCrypto） | 2 | done（TELE-98：rustls 单后端 + --ca-certificate 真实校验；sha-1 校验；app replay 185/185） |
+| `net-base` | socket 选项 / DNS / TLS / 摘要（tokio + socket2 + rustls + RustCrypto） | 2 | done（claimed by TELE-98 2026-11-28：rustls 单后端 + --ca-certificate 真实校验；sha-1 校验；app replay 185/185） |
 | `ftp` | FTP 客户端（数据面手写，suppaftp 仅作协议参考） | 6 | open（暂名） |
 | `sftp` | SFTP（russh + russh-sftp） | 6 | open（暂名） |
 

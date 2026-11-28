@@ -218,7 +218,12 @@ fn authority_and_path(uri: &str) -> Option<(&str, u16, &str)> {
 
 fn target_for(uri: &str, opts: &Options) -> Option<Target> {
     let (_, _, path) = authority_and_path(uri)?;
-    let name = path.trim_end_matches('/').rsplit('/').next()?;
+    let name = path
+        .split(['?', '#'])
+        .next()?
+        .trim_end_matches('/')
+        .rsplit('/')
+        .next()?;
     if name.is_empty() {
         return None;
     }
@@ -232,6 +237,29 @@ struct Response {
     status: u16,
     content_length: Option<u64>,
     body: Vec<u8>,
+}
+/// HTTP/1.1 chunked transfer decoding (RFC 9112 §7.1). Returns `None` for a
+/// truncated or malformed body so the caller falls back to the original.
+fn decode_chunked(body: &[u8]) -> Option<Vec<u8>> {
+    let mut pos = 0;
+    let mut out = Vec::new();
+    loop {
+        let end = body[pos..]
+            .windows(2)
+            .position(|w| w == b"\r\n")
+            .map(|i| pos + i)?;
+        let size_text = std::str::from_utf8(&body[pos..end]).ok()?;
+        let size = usize::from_str_radix(size_text.split(';').next()?.trim(), 16).ok()?;
+        pos = end + 2;
+        if size == 0 {
+            return Some(out);
+        }
+        if body.len() < pos + size + 2 || &body[pos + size..pos + size + 2] != b"\r\n" {
+            return None;
+        }
+        out.extend_from_slice(&body[pos..pos + size]);
+        pos += size + 2;
+    }
 }
 
 /// One TLS backend for both schemes; plain HTTP has no handshake to drive.
@@ -398,6 +426,7 @@ fn send_request(
         .and_then(|s| s.parse().ok())
         .unwrap_or(0);
     let mut content_length = None;
+    let mut chunked = false;
     loop {
         line.clear();
         if reader.read_line(&mut line)? == 0 || line == "\r\n" {
@@ -407,11 +436,19 @@ fn send_request(
             if name.eq_ignore_ascii_case("content-length") {
                 content_length = value.trim().parse().ok();
             }
+            if name.eq_ignore_ascii_case("transfer-encoding")
+                && value.to_ascii_lowercase().contains("chunked")
+            {
+                chunked = true;
+            }
         }
     }
     let mut body = Vec::new();
     if !head {
         reader.read_to_end(&mut body)?;
+        if chunked {
+            body = decode_chunked(&body).ok_or_else(invalid)?;
+        }
     }
     Ok(Response {
         status,
@@ -645,8 +682,7 @@ fn download(target: &Target, opts: &Options) -> Option<Result<(), String>> {
         Some(total_length(&target.uri, ca).ok()?)
     };
     if total.is_some_and(|t| local >= t) {
-        // aria2 creates the (empty) output file even for a zero-byte resource.
-        let _ = open_output(&target.path, false);
+        // Already complete: aria2 keeps the file untouched and reports success.
         return Some(Ok(()));
     }
     if segments == 1 || total.is_some_and(|t| t <= opts.min_split) {
@@ -673,7 +709,10 @@ fn download(target: &Target, opts: &Options) -> Option<Result<(), String>> {
             let _ = write_control_file(&target.path, total, 1 << 20);
             return Some(Err("eof".to_owned()));
         }
-        let mut file = match open_output(&target.path, opts.resume) {
+        // A 200 answering a Range request means the server ignored it; the
+        // response is a full representation and must replace the partial file.
+        let overwrite = range.is_some() && response.status == 200;
+        let mut file = match open_output(&target.path, opts.resume && !overwrite) {
             Ok(f) => f,
             Err(_) => return Some(Err("io".to_owned())),
         };
@@ -687,19 +726,6 @@ fn download(target: &Target, opts: &Options) -> Option<Result<(), String>> {
     let ranges: Vec<(u64, u64)> = (0..segments as u64)
         .map(|n| (n * chunk, ((n + 1) * chunk - 1).min(total - 1)))
         .collect();
-    let mut file = match OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(&target.path)
-    {
-        Ok(f) => f,
-        Err(_) => return Some(Err("io".to_owned())),
-    };
-    if file.set_len(total).is_err() {
-        return Some(Err("io".to_owned()));
-    }
     let uri = target.uri.clone();
     let parts = thread::scope(|scope| {
         let uri_template = uri.clone();
@@ -718,10 +744,27 @@ fn download(target: &Target, opts: &Options) -> Option<Result<(), String>> {
             .map(|h| h.join().ok()?.ok())
             .collect::<Option<Vec<_>>>()
     })?;
-    for (part, (start, _)) in parts.iter().zip(ranges.iter()) {
-        if part.status != 206 {
+    // Validate before touching the output file: a short 206 body would leave
+    // zero-filled holes and a false OK (review B2).
+    for (part, (start, end)) in parts.iter().zip(ranges.iter()) {
+        if part.status != 206 || part.body.len() as u64 != end - start + 1 {
             return None;
         }
+    }
+    let mut file = match OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(&target.path)
+    {
+        Ok(f) => f,
+        Err(_) => return Some(Err("io".to_owned())),
+    };
+    if file.set_len(total).is_err() {
+        return Some(Err("io".to_owned()));
+    }
+    for (part, (start, _)) in parts.iter().zip(ranges.iter()) {
         if file.seek(SeekFrom::Start(*start)).is_err() || file.write_all(&part.body).is_err() {
             return Some(Err("io".to_owned()));
         }
@@ -796,6 +839,23 @@ mod tests {
     fn default_ca_resolves_against_repo_root() {
         let path = crate::original::config_path(crate::original::DEFAULT_CA);
         assert!(path.is_file(), "{}", path.display());
+    }
+
+    #[test]
+    fn decodes_chunked_body() {
+        let wire = b"5\r\nhello\r\n6;ext=1\r\n world\r\n0\r\n\r\n";
+        assert_eq!(decode_chunked(wire).unwrap(), b"hello world");
+        assert!(decode_chunked(b"5\r\nhello\r\n").is_none());
+    }
+
+    #[test]
+    fn output_name_ignores_query_and_fragment() {
+        let opts = Options {
+            dir: "downloads".to_owned(),
+            ..Options::default()
+        };
+        let target = target_for("http://127.0.0.1/1kib.bin?token=abc#frag", &opts).unwrap();
+        assert_eq!(target.path, "downloads/1kib.bin");
     }
 
     fn argv(items: &[&str]) -> Vec<OsString> {

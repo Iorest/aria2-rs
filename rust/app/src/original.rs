@@ -32,6 +32,11 @@ pub fn config_path(word: &str) -> PathBuf {
     }
 }
 const FALLBACK_LOG: &str = "RUST_ANYTHING_FALLBACK_LOG";
+/// Empty HOME used by the recording command; the replay sandbox does not
+/// inherit it, so the front door sets it explicitly on each fallback.
+pub fn sandbox_home() -> PathBuf {
+    Path::new(ROOT).join("test-env/home")
+}
 const ORIGINAL_BASE: &str = "RUST_ANYTHING_ORIGINAL_BASE";
 
 /// Where an installed package finds `node_modules/...`: the folder its launcher resolved the
@@ -112,6 +117,10 @@ fn run_with(args: &[OsString], input: Option<&[u8]>) -> ExitCode {
     };
     let mut command = Command::new(resolve(program));
     command.args(rest.iter().map(|w| resolve(w))).args(args);
+    let home = sandbox_home();
+    if home.is_dir() {
+        command.env("HOME", home);
+    }
     #[cfg(windows)]
     if Path::new(program)
         .file_stem()

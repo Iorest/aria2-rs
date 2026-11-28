@@ -70,7 +70,7 @@ DHT / 加密握手的行为契约在阶段 4 开工前单列 ADR（MAP §5）。
 |---|---|---|---|---|---|
 | 事件循环 / 并发模型 | ARCHITECTURE §3（映射表） | tokio（单 worker 起步） | ok | 2 | open |
 | socket 选项 / DNS | `src/SocketCore.cc`、`src/NameResolver.cc` | tokio::net + socket2；hickory-resolver 可选（partial） | ok | 2 | open |
-| TLS | ARCHITECTURE §2.6 | rustls + rustls-native-certs | ok | 2 | open |
+| TLS | ARCHITECTURE §2.6 | rustls + rustls-pemfile | ok | 2 | done（TELE-98，真实 CA 校验） |
 | 摘要 / CRC / adler32 | ARCHITECTURE §2.6 | RustCrypto + crc32fast；adler32 crate 未核实（U2） | ok/unknown | 2 | open |
 | 选项系统 | `src/OptionParser.cc`、`src/OptionHandlerFactory.cc` | `option` | — | 2 | open |
 | 日志与统计读出 | ARCHITECTURE §2.6 | `engine`；格式契约 EQ-E3/E4/E19 | — | 2 | open |
