@@ -23,11 +23,11 @@
 
 | 子能力 | 原版证据 | Rust 落点 | fit | 阶段 | 状态 |
 |---|---|---|---|---|---|
-| 内嵌 HTTP 服务端 | ARCHITECTURE §2.2（服务端行） | `engine` + tokio/axum（front door 先行，TELE-97） | — | 2–3 | open |
-| JSON-RPC 通道 | `src/JsonParser.cc` | serde_json（DEPENDENCIES §3） | ok | 3 | open |
-| RPC 方法层（addUri / tellStatus 等约 30 个） | `src/RpcMethodImpl.cc` | 单元 `rpc-methods`（N9） | none | 3 | open |
-| XML-RPC 通道（aria2 方言） | ARCHITECTURE §2.2（XML-RPC 行） | 单元 `rpc-xml`（N5，quick-xml 之上） | none | 3 | open |
-| WebSocket 通知 | `deps/wslay/` + ARCHITECTURE §2.2 | tokio-tungstenite；行为对齐 U3 待 replay 裁定 | partial | 3 | open |
+| 内嵌 HTTP 服务端 | ARCHITECTURE §2.2（服务端行） | `engine` + tokio/axum（front door 先行，TELE-97） | — | 2–3 | done（TELE-99：tokio/axum loopback server） |
+| JSON-RPC 通道 | `src/JsonParser.cc` | serde_json（DEPENDENCIES §3） | ok | 3 | done（TELE-99：25 例录制通道全绿） |
+| RPC 方法层（addUri / tellStatus 等约 30 个） | `src/RpcMethodImpl.cc` | 单元 `rpc-methods`（N9） | none | 3 | done（TELE-99：EQ-E13/E16/E17/E18 + app replay） |
+| XML-RPC 通道（aria2 方言） | ARCHITECTURE §2.2（XML-RPC 行） | 单元 `rpc-xml`（N5，quick-xml 之上） | none | 3 | done（TELE-99：7 个 XML-RPC 录制用例全绿） |
+| WebSocket 通知 | `deps/wslay/` + ARCHITECTURE §2.2 | tokio-tungstenite；行为对齐 U3 待 replay 裁定 | partial | 3 | open（TELE-99：E17 载荷与原版源码冲突，待契约裁定） |
 
 对外契约（端点 `/jsonrpc`、`/rpc`、错误码配对、GID 表示）见 `docs/EQUIVALENCE.md` E13–E18。
 

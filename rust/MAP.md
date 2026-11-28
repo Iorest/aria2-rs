@@ -26,8 +26,8 @@
 |---|---|---|---|---|
 | `uri-parse` | 宽松 URI 解析（唯一走完整单元 loop 的单元，含 `src/uri_split.c`） | none | 2 | done（claimed by TELE-98 2026-11-28：`diff` 237/237、`gate` pass、front-door replay 185/185、fallback 100%→50.8%） |
 | `control-file` | .aria2 控制文件二进制格式（契约级，EQUIVALENCE E12） | none | 2 | done（claimed by TELE-98 2026-11-28：非 BT 字段逐字节与 cus-08 golden 一致；BT 扩展留阶段 4） |
-| `rpc-methods` | RPC 方法层（约 30 个方法语义） | none | 3 | open |
-| `rpc-xml` | XML-RPC 服务端（aria2 方言） | none | 3 | open |
+| `rpc-methods` | RPC 方法层（约 30 个方法语义） | none | 3 | done（claimed by TELE-99 2026-11-28：JSON-RPC 通道 28 例 app replay 全绿，front-door 零 fallback；EQ-E13/E14/E15/E16/E17/E18 契约测试全绿。常量桩：`changeOption/getOption/changeUri/getServers/getPeers/changeGlobalOption/shutdown` 等，BT/Metalink 方法语义留阶段 4/5） |
+| `rpc-xml` | XML-RPC 服务端（aria2 方言） | none | 3 | done（claimed by TELE-99 2026-11-28：10 个 XML-RPC 录制用例全绿，含 `&amp;`/`&lt;`/hex 实体；quick-xml 解析 + aria2 方言序列化） |
 | `bt-peer` | BT 全栈：Peer Wire 消息、choke、PEX、ut_metadata | none | 4 | open |
 | `bt-dht` | DHT（BEP-5） | none | 4 | open |
 | `bt-tracker` | UDP tracker（BEP-15） | none | 4 | open |
@@ -54,6 +54,8 @@
 **阶段 2 首个 wire（2026-11-28，TELE-98 / `uri-parse`）**：front-door 自己拒绝 `uri_split()` 判为不支持的 URI（E1/E5），`app replay` 185/185，**fallback rate = 50.8%（94/185）**；较阶段 1 基线下降 49.2 个百分点。仅下降，不回退。
 
 **阶段 2 下载核心 wire（2026-11-28，TELE-98）**：前门自己完成 HTTP/HTTPS 单源与多源下载、Range 分段、`-x/-k` 多连接、续传、sha-1 校验、截断中断控制文件；TLS 收敛到 rustls 单后端并走 `--ca-certificate` 真实校验。`app replay` 185/185，**fallback rate = 42.7%（79/185）**。相对首个 wire 再降 8.1 个百分点，相对阶段 1 降 57.3 个百分点。
+
+**阶段 3 RPC wire（2026-11-28，TELE-99）**：新增独立录制根 `rpc-cases/`（28 例：JSON-RPC POST/GET/JSONP/批量/错误码/token + XML-RPC 方言含 `&amp;`/`&lt;`/hex 实体），原版回放 28/28，Rust 前门回放 28/28、fallback=0.0%（0/28）。跨通道合并 fallback = 79/(185+28) = **37.1%**，低于阶段 2 基线 42.7%；CLI 通道仍为 185/185、42.7%（79/185）。WebSocket 通知未纳入本批录制（工具 `--http` 无法表达多帧连接），E17 载荷口径与原版源码存在冲突，待契约裁定后另案处理。
 
 ## 4. Claim 规则
 

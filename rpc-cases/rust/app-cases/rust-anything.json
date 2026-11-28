@@ -1,0 +1,66 @@
+{
+  "schema": "rust-anything/app-cases@1",
+  "name": "replay-home",
+  "run": [
+    "../test-env/replay-home.sh",
+    "../env/aria2-1.37.0/bin/aria2c",
+    "--no-conf",
+    "--dir=downloads",
+    "--allow-overwrite=true",
+    "--auto-file-renaming=false",
+    "--all-proxy=http://127.0.0.1:9",
+    "--no-proxy=127.0.0.1,localhost",
+    "--max-tries=1",
+    "--retry-wait=0",
+    "--ca-certificate=../test-env/certs/ca.crt"
+  ],
+  "normalize": [
+    "key-order"
+  ],
+  "normalizers": {
+    "expires": "^[A-Z][a-z]{2}, \\d{2} [A-Z][a-z]{2} \\d{4} \\d{2}:\\d{2}:\\d{2} GMT$",
+    "features": "\"enabledFeatures\":\\[[^]]*\\]",
+    "gid": "[0-9a-f]{16}",
+    "speed": "\"(downloadSpeed|uploadSpeed|connections|numSeeders)\":\"[0-9]+\"",
+    "xml-features": "enabledFeatures</name><value><array><data>.*?</data></array></value>"
+  },
+  "timeout_secs": 120,
+  "http": {
+    "args": [
+      "--enable-rpc",
+      "--rpc-listen-port={port}",
+      "--rpc-secret=local-rpc-test-only"
+    ],
+    "pace_ms": 500
+  },
+  "recorded": [
+    "json-add-uri",
+    "json-batch",
+    "json-get-jsonp",
+    "json-get-query",
+    "json-get-version",
+    "json-global-stat",
+    "json-invalid-params",
+    "json-invalid-request",
+    "json-list-methods",
+    "json-list-notifications",
+    "json-parse-error",
+    "json-tell-active",
+    "json-tell-status-missing",
+    "json-tell-stopped",
+    "json-tell-waiting",
+    "json-unauthorized",
+    "json-unknown-method",
+    "json-unknown-path",
+    "xml-add-uri",
+    "xml-add-uri-amp",
+    "xml-add-uri-hex",
+    "xml-add-uri-lt",
+    "xml-get-version",
+    "xml-global-stat",
+    "xml-list-methods",
+    "xml-malformed",
+    "xml-tell-status-missing",
+    "xml-unauthorized"
+  ]
+}

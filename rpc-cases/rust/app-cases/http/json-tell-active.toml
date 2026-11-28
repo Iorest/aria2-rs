@@ -1,0 +1,15 @@
+[request]
+method = "POST"
+path = "/jsonrpc"
+body = '{"id":7,"method":"aria2.tellActive","params":["token:local-rpc-test-only"]}'
+
+[request.headers]
+Content-Type = "application/json"
+
+[response]
+status = 200
+
+[response.headers]
+cache-control = "no-cache"
+content-type = "application/json-rpc"
+expires = "[..]"

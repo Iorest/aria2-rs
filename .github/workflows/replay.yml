@@ -23,7 +23,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y autoconf automake autopoint libtool \
-            pkg-config gettext python3-pip libssl-dev lsof curl
+            pkg-config gettext python3-pip libssl-dev libexpat1-dev lsof curl
           python3 -m pip install --break-system-packages pyftpdlib cryptography
 
       - name: Install rust-anything 4.2.0 (pinned by docs/RECORD-CASES.md)
@@ -40,7 +40,7 @@ jobs:
           cd env/tarball/aria2-1.37.0
           ./configure --prefix="$PWD/../../aria2-1.37.0" \
             --with-openssl --without-appletls --without-gnutls --without-libxml2 \
-            --without-libexpat --disable-nls
+            --disable-nls
           make -j"$(nproc)" && make install
           sha256sum ../../aria2-1.37.0/bin/aria2c
 
@@ -52,12 +52,12 @@ jobs:
 
       - name: G0 - network and credential boundary
         run: |
-          if grep -rnE '(https?|ftp)://' rust/app-cases cases \
+          if grep -rnE '(https?|ftp)://' rust/app-cases rpc-cases/rust/app-cases cases \
              | grep -vE '127\.0\.0\.1|localhost'; then
             echo 'FAIL: non-loopback URI'; exit 1
           fi
           if grep -rnE 'creds\.json|BEGIN [A-Z ]*PRIVATE KEY' \
-             rust/app-cases cases; then
+             rust/app-cases rpc-cases/rust/app-cases cases; then
             echo 'FAIL: credential leak'; exit 1
           fi
 
@@ -77,21 +77,38 @@ jobs:
 
       - name: G2 - front-door replay 100%, fallback below baseline
         run: rust-anything app replay . --build "test-env/replay-home.sh rust/app/target/debug/aria2c"
-      - name: G4 - fallback below stage-1 baseline
+
+      - name: G1 - RPC original replay 100%
+        run: rust-anything app replay rpc-cases
+
+      - name: G2 - RPC front-door replay, zero fallback
+        run: rust-anything app replay rpc-cases --build "../test-env/replay-home.sh ../rust/app/target/debug/aria2c"
+
+      - name: G4 - combined fallback below stage-2 baseline 42.7%
         run: |
-          rate=$(sed -n 's/^Fallback rate: \([0-9.]*\)%.*/\1/p' rust/app-cases/replay-report.md)
-          echo "fallback=$rate%"
-          awk -v r="$rate" 'BEGIN { if (!(r < 100.0)) exit 1 }'
+          cli_fb=$(sed -n 's/^Fallback rate: [0-9.]*% (\([0-9]*\)\/[0-9]*.*/\1/p' rust/app-cases/replay-report.md)
+          rpc_fb=$(sed -n 's/^Fallback rate: [0-9.]*% (\([0-9]*\)\/[0-9]*.*/\1/p' rpc-cases/rust/app-cases/replay-report.md)
+          cli_total=$(sed -n 's/^Fallback rate: [0-9.]*% ([0-9]*\/\([0-9]*\).*/\1/p' rust/app-cases/replay-report.md)
+          rpc_total=$(sed -n 's/^Fallback rate: [0-9.]*% ([0-9]*\/\([0-9]*\).*/\1/p' rpc-cases/rust/app-cases/replay-report.md)
+          for value in "$cli_fb" "$rpc_fb" "$cli_total" "$rpc_total"; do
+            case "$value" in ''|*[!0-9]*) echo 'FAIL: missing fallback counts in replay reports'; exit 1 ;; esac
+          done
+          echo "CLI fallback=$cli_fb/$cli_total, RPC fallback=$rpc_fb/$rpc_total"
+          awk -v fb="$((cli_fb + rpc_fb))" -v total="$((cli_total + rpc_total))" 'BEGIN {
+            rate = 100 * fb / total
+            printf "combined fallback=%.1f%% (%d/%d)\n", rate, fb, total
+            if (rate >= 42.7) exit 1
+          }'
 
       - name: GID mapping comparator (EQUIVALENCE N1)
         run: python3 test-env/check-gid-consistency.py rust/app/target/debug/aria2c
 
       - name: G3 - replay report zero drift
-        run: git diff --exit-code -- rust/app-cases
+        run: git diff --exit-code -- rust/app-cases rpc-cases/rust/app-cases
 
       - name: Dump replay diff on failure
         if: failure()
-        run: cat rust/app-cases/replay-report.md || true
+        run: cat rust/app-cases/replay-report.md rpc-cases/rust/app-cases/replay-report.md || true
 
       - name: Stop loopback servers
         if: always()

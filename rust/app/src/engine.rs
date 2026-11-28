@@ -703,7 +703,9 @@ fn download(target: &Target, opts: &Options) -> Option<Result<(), String>> {
             return Some(Ok(()));
         }
         if response.status != 200 && response.status != 206 {
-            return None;
+            // CLI still falls back on unknown error kinds; RPC maps the
+            // HTTP status to an aria2 error code (src/error_code.h:49).
+            return Some(Err(format!("http-{}", response.status)));
         }
         if response
             .content_length
@@ -841,6 +843,54 @@ pub fn try_run(args: &[OsString]) -> Option<ExitCode> {
     Some(ExitCode::SUCCESS)
 }
 
+/// Result of a download started through RPC. RPC has no console readout, so
+/// the HTTP core returns the same bytes and metadata in structured form.
+#[derive(Debug, Clone)]
+pub struct Fetched {
+    pub path: String,
+    pub total_length: u64,
+    pub piece_length: u64,
+    pub num_pieces: u64,
+    pub bitfield: String,
+}
+
+/// Hex bitfield for a fully downloaded set of pieces (E15 terminal bitfield).
+fn completed_bitfield(num_pieces: u64) -> String {
+    let mut bits = vec![0xffu8; num_pieces.div_ceil(8) as usize];
+    if num_pieces % 8 != 0 {
+        if let Some(last) = bits.last_mut() {
+            *last = 0xff << (8 - num_pieces % 8);
+        }
+    }
+    bits.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
+/// Runs one URI through the same download core as the CLI front door, without
+/// printing the CLI's terminal summary. `None` means the URI is not ours.
+pub fn rpc_fetch(uri: &str, dir: &str, ca: Option<&str>) -> Option<Result<Fetched, String>> {
+    let opts = Options {
+        dir: dir.to_owned(),
+        ca_cert: ca.map(str::to_owned),
+        ..Options::default()
+    };
+    let target = target_for(uri, &opts)?;
+    match download(&target, &opts)? {
+        Ok(()) => {}
+        Err(kind) => return Some(Err(kind)),
+    }
+    let total_length = std::fs::metadata(&target.path).ok()?.len();
+    let piece_length = 1 << 20;
+    let num_pieces = total_length.div_ceil(piece_length).max(1);
+    let bitfield = completed_bitfield(num_pieces);
+    Some(Ok(Fetched {
+        path: target.path,
+        total_length,
+        piece_length,
+        num_pieces,
+        bitfield,
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -969,5 +1019,12 @@ mod tests {
         assert_eq!(std::fs::metadata(&path).unwrap().len(), 1 << 20);
         assert!(!Path::new(&format!("{path}.aria2")).exists());
         std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn completed_bitfield_sets_every_piece_and_clears_unused_bits() {
+        assert_eq!(completed_bitfield(1), "80");
+        assert_eq!(completed_bitfield(8), "ff");
+        assert_eq!(completed_bitfield(21), "fffff8");
     }
 }

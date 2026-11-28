@@ -1,6 +1,7 @@
 mod cli;
 mod engine;
 mod original;
+mod rpc;
 mod units;
 
 use std::ffi::OsString;
@@ -9,6 +10,9 @@ use std::process::ExitCode;
 fn main() -> ExitCode {
     original::report_fallbacks();
     let argv: Vec<OsString> = std::env::args_os().collect();
+    if let Some(code) = rpc::serve(&argv[1..]) {
+        return code;
+    }
     if let Some(code) = engine::try_run(&argv[1..]) {
         return code;
     }

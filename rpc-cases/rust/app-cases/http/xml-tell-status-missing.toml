@@ -1,0 +1,15 @@
+[request]
+method = "POST"
+path = "/rpc"
+body = '<?xml version="1.0"?><methodCall><methodName>aria2.tellStatus</methodName><params><param><value><string>token:local-rpc-test-only</string></value></param><param><value><string>0123456789abcdef</string></value></param></params></methodCall>'
+
+[request.headers]
+Content-Type = "text/xml"
+
+[response]
+status = 200
+
+[response.headers]
+cache-control = "no-cache"
+content-type = "text/xml"
+expires = "[..]"

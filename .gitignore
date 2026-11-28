@@ -8,4 +8,5 @@
 /downloads/*
 __pycache__/
 *.pyc
+/rpc-cases/downloads/
 !/downloads/.gitkeep
