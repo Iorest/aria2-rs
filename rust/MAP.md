@@ -38,10 +38,10 @@
 
 | 单元（暂名） | 能力 | 阶段 | 状态 |
 |---|---|---|---|
-| `engine` | 下载引擎核心：DownloadEngine / RequestGroup / SegmentMan / PieceStorage / 调度 | 2 | open（暂名） |
-| `option` | 选项系统（OptionParser / OptionHandlerFactory） | 2 | open（暂名） |
-| `disk` | 磁盘写入与文件分配（falloc/trunc/prealloc） | 2 | open（暂名） |
-| `net-base` | socket 选项 / DNS / TLS / 摘要（tokio + socket2 + rustls + RustCrypto） | 2 | open（暂名） |
+| `engine` | 下载引擎核心：DownloadEngine / RequestGroup / SegmentMan / PieceStorage / 调度 | 2 | done（TELE-98：单/多源 HTTP 下载、Range 分段、`-x/-k`、续传、校验、控制文件；app replay 185/185） |
+| `option` | 选项系统（OptionParser / OptionHandlerFactory） | 2 | done（TELE-98：前门必要选项子集，未识别选项回落原版） |
+| `disk` | 磁盘写入与文件分配（falloc/trunc/prealloc） | 2 | open（阶段 2 只实现下载写入与控制文件） |
+| `net-base` | socket 选项 / DNS / TLS / 摘要（tokio + socket2 + rustls + RustCrypto） | 2 | done（TELE-98：rustls 单后端 + --ca-certificate 真实校验；sha-1 校验；app replay 185/185） |
 | `ftp` | FTP 客户端（数据面手写，suppaftp 仅作协议参考） | 6 | open（暂名） |
 | `sftp` | SFTP（russh + russh-sftp） | 6 | open（暂名） |
 
@@ -52,6 +52,8 @@
 **阶段 1 基线（2026-11-27，TELE-97 实测）**：`rust/app-cases/` 185 例（23 手工 + 162 traps）；`app replay` 原版 185/185、front-door 185/185，**fallback rate = 100.0%（185/185）**。阶段 2 起 G4 断言 ≤ 100%，每次 wire 后记录新基线。原版 SHA-256 `5fa3b455a29d4f8d9251617dd93037933f83f2b5e7747439ef14587f9aceab9f`。
 
 **阶段 2 首个 wire（2026-11-28，TELE-98 / `uri-parse`）**：front-door 自己拒绝 `uri_split()` 判为不支持的 URI（E1/E5），`app replay` 185/185，**fallback rate = 50.8%（94/185）**；较阶段 1 基线下降 49.2 个百分点。仅下降，不回退。
+
+**阶段 2 下载核心 wire（2026-11-28，TELE-98）**：前门自己完成 HTTP/HTTPS 单源与多源下载、Range 分段、`-x/-k` 多连接、续传、sha-1 校验、截断中断控制文件；TLS 收敛到 rustls 单后端并走 `--ca-certificate` 真实校验。`app replay` 185/185，**fallback rate = 42.7%（79/185）**。相对首个 wire 再降 8.1 个百分点，相对阶段 1 降 57.3 个百分点。
 
 ## 4. Claim 规则
 

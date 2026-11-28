@@ -19,6 +19,18 @@ const RUN: &[&str] = &[
     "--retry-wait=0",
     "--ca-certificate=test-env/certs/ca.crt",
 ];
+/// Same trust anchor the front door injects when it falls back (see `RUN`).
+pub const DEFAULT_CA: &str = "test-env/certs/ca.crt";
+/// Resolve a config path the way the fallback command does: relative to the
+/// compiled repo root first, then to the process cwd.
+pub fn config_path(word: &str) -> PathBuf {
+    let path = Path::new(ROOT).join(word);
+    if path.is_file() {
+        path
+    } else {
+        PathBuf::from(word)
+    }
+}
 const FALLBACK_LOG: &str = "RUST_ANYTHING_FALLBACK_LOG";
 const ORIGINAL_BASE: &str = "RUST_ANYTHING_ORIGINAL_BASE";
 

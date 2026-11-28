@@ -12,5 +12,8 @@ path = "src/main.rs"
 [dependencies]
 clap = "4"
 uri-parse-rs = { path = "../uri-parse/port" }
+sha1 = "0.10"
+rustls = { version = "0.23", features = ["ring"] }
+rustls-pemfile = "2"
 
 [workspace]

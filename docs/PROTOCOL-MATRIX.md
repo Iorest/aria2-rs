@@ -8,14 +8,14 @@
 
 | 子能力 | 原版证据 | Rust 落点 | fit | 阶段 | 状态 |
 |---|---|---|---|---|---|
-| 单源下载 / Range 续传 / 多源分段 | ARCHITECTURE §2.1（客户端链） | `engine` + `net-base` | — | 2 | open |
-| 宽松 URI 解析 | `src/uri.cc`、`src/uri_split.c` | 单元 `uri-parse`（DEPENDENCIES §4 N8） | none | 2 | open |
+| 单源下载 / Range 续传 / 多源分段 | ARCHITECTURE §2.1（客户端链） | `engine` + `net-base` | — | 2 | done（TELE-98） |
+| 宽松 URI 解析 | `src/uri.cc`、`src/uri_split.c` | 单元 `uri-parse`（DEPENDENCIES §4 N8） | none | 2 | done（TELE-98，diff 237/237 + gate） |
 | 代理（GET / CONNECT 隧道） | ARCHITECTURE §2.1（代理链） | `net-base` | — | 2 | open |
 | Basic 认证 + netrc | ARCHITECTURE §2.1（认证行） | `net-base` | — | 2 | open |
 | Cookie（Netscape / Firefox sqlite 导入） | ARCHITECTURE §2.1 | `net-base`；sqlite 走 rusqlite（可选 feature） | ok | 2 | open |
 | gzip 内容解码 | ARCHITECTURE §2.1（内容解码行） | flate2 | ok | 2 | open |
-| HTTPS/TLS | ARCHITECTURE §2.6（TLS ×4 后端收敛） | rustls 单后端 | ok | 2 | open |
-| 控制文件（断点续传） | `src/DefaultBtProgressInfoFile.cc` | 单元 `control-file`（N6，契约级 EQ-E12） | none | 2 起 | open |
+| HTTPS/TLS | ARCHITECTURE §2.6（TLS ×4 后端收敛） | rustls 单后端 | ok | 2 | done（TELE-98，真实 CA 校验） |
+| 控制文件（断点续传） | `src/DefaultBtProgressInfoFile.cc` | 单元 `control-file`（N6，契约级 EQ-E12） | none | 2 起 | done（TELE-98：非 BT 字段；BT 扩展留阶段 4） |
 
 不做：brotli 解码、HTTP Digest 认证、SOCKS 代理——原版不支持（DEPENDENCIES §5）。
 
