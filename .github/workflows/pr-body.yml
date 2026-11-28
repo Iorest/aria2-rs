@@ -1,0 +1,22 @@
+name: pr-body
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+jobs:
+  pr-body:
+    runs-on: ubuntu-latest
+    steps:
+      # 正文只经环境变量传入，不拼进命令，避免注入
+      - name: 校验 PR 正文
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          for s in 问题 目标 方案 行为变化 合并风险 证据; do
+            printf '%s\n' "$BODY" | grep -q "^## $s" || { echo "缺少段落：$s"; exit 1; }
+          done
+          # 任务号或 chore/docs 前缀二选一：功能 PR 要任务号，基础设施/文档 PR 用标题前缀
+          printf '%s\n%s\n' "$TITLE" "$BODY" | grep -Eq '[A-Z]+-[0-9]+|^chore:|^docs:' \
+            || { echo "缺少任务号，且标题不是 chore:/docs:"; exit 1; }
+          printf '%s\n' "$BODY" | awk '/^## 行为变化/{f=1;next} /^## /{f=0} f' | grep -Eq '^(有|无)' \
+            || { echo "行为变化第一个字必须是有或无"; exit 1; }

@@ -1,0 +1,45 @@
+name: risk-tier
+on:
+  pull_request:
+    types: [opened, synchronize]
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  tier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: 按改动路径判档并评论
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          base="origin/${{ github.base_ref }}"
+          changed=$(git diff --name-only "$base"...HEAD)
+          tier=low
+
+          # 保护路径（.github/、发版脚本、Dockerfile、spec）→ 高（软闸：@ owner）
+          echo "$changed" | grep -Eq '^\.github/|^\.specify/|^specs/|(^|/)release|Dockerfile|(^|/)secrets?|(^|/)permission|(^|/)policy' && tier=high
+
+          # 依赖清单/锁文件 → 高（供应链风险：Rust/Swift/JS/Go）
+          echo "$changed" | grep -Eq '(^|/)(Cargo\.(toml|lock)|Package\.(swift|resolved)|package(-lock)?\.json|go\.(mod|sum)|pnpm-lock\.yaml|yarn\.lock)' && tier=high
+
+          # 测试与验收材料被改 → 高（写者不能单方面弱化断言）
+          echo "$changed" | grep -Eq '(^|/)(tests?/|.*_test\.|.*\.test\.|.*Tests\.)' && tier=high
+
+          # 公共接口/鉴权目录 → 高
+          echo "$changed" | grep -Eq '(^|/)(auth/|api/|migrations?/)' && tier=high
+
+          # 不可回退：删资源、发版发布、不可逆迁移
+          echo "$changed" | grep -Eq '(^|/)migrations?/.*(drop|delete)|(^|/)(release|publish)|(^|/)deploy/' && tier=irreversible
+
+          echo "风险档：$tier" >> "$GITHUB_STEP_SUMMARY"
+          gh pr comment "$PR" --body "风险档（脚本判定）：$tier。低/标准统筹直接合并；高/不可回退 @ owner 本人。统筹按此档走，明镜核对。"
+
+          # 软闸：高/不可回退只发 warning + PR 评论 @ owner，不 fail（单身份无 review 闸，
+          # 硬拦会让 owner 自己都合不了）。统筹看到高档会停手 @ owner，靠流程而非 check 强制。
+          if [ "$tier" = "high" ] || [ "$tier" = "irreversible" ]; then
+            echo "::warning::风险档 $tier，需 owner 本人处理"
+          fi
