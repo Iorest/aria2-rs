@@ -24,7 +24,7 @@
 
 | 单元 | 能力 | fit | 阶段 | 状态 |
 |---|---|---|---|---|
-| `uri-parse` | 宽松 URI 解析（唯一走完整单元 loop 的单元，含 `src/uri_split.c`） | none | 2 | open |
+| `uri-parse` | 宽松 URI 解析（唯一走完整单元 loop 的单元，含 `src/uri_split.c`） | none | 2 | done（TELE-98：`diff` 237/237、`gate` pass、front-door replay 185/185、fallback 100%→50.8%） |
 | `control-file` | .aria2 控制文件二进制格式（契约级，EQUIVALENCE E12） | none | 2 | open |
 | `rpc-methods` | RPC 方法层（约 30 个方法语义） | none | 3 | open |
 | `rpc-xml` | XML-RPC 服务端（aria2 方言） | none | 3 | open |
@@ -50,6 +50,8 @@
 `app record` / `app front-door` / 逐阶段 `app wire` / `app lift` 对应 TELE-97..103（父任务 TELE-88 阶段表）；fallback rate 只降不升，状态随阶段里程碑核对更新，不在本表逐行登记。
 
 **阶段 1 基线（2026-11-27，TELE-97 实测）**：`rust/app-cases/` 185 例（23 手工 + 162 traps）；`app replay` 原版 185/185、front-door 185/185，**fallback rate = 100.0%（185/185）**。阶段 2 起 G4 断言 ≤ 100%，每次 wire 后记录新基线。原版 SHA-256 `5fa3b455a29d4f8d9251617dd93037933f83f2b5e7747439ef14587f9aceab9f`。
+
+**阶段 2 首个 wire（2026-11-28，TELE-98 / `uri-parse`）**：front-door 自己拒绝 `uri_split()` 判为不支持的 URI（E1/E5），`app replay` 185/185，**fallback rate = 50.8%（94/185）**；较阶段 1 基线下降 49.2 个百分点。仅下降，不回退。
 
 ## 4. Claim 规则
 

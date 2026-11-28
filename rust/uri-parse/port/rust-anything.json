@@ -1,0 +1,33 @@
+{
+  "schema": "rust-anything/bridge@1",
+  "root": "/Users/iorest/multica_workspaces/telesto-yvp-7d0d857f49ea/tele-98-b4f2cf486229/workdir/aria2-rs/rust/uri-parse/c-original",
+  "unit": "uri_split_wrap.c",
+  "language": "c",
+  "kind": "c-abi",
+  "crate_name": "uri-parse-rs",
+  "exports": [
+    {
+      "name": "uri_split_summary",
+      "file": "uri_split_wrap.c",
+      "line": 6,
+      "params": [
+        {
+          "name": "uri",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false,
+          "native_type": "const char*"
+        }
+      ],
+      "returns": "int",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false,
+      "native_return": "int64_t",
+      "prototype": "int64_t uri_split_summary(const char* uri)"
+    }
+  ],
+  "classes": [],
+  "js_only": []
+}

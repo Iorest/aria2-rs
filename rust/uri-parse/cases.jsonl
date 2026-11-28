@@ -1,0 +1,26 @@
+{"fn":"uri_split_summary","args":["http://127.0.0.1:18080/1mib.bin"]}
+{"fn":"uri_split_summary","args":["http://localhost:18080/1mib.bin"]}
+{"fn":"uri_split_summary","args":["https://127.0.0.1:18443/1mib.bin"]}
+{"fn":"uri_split_summary","args":["ftp://127.0.0.1:1821/1kib.bin"]}
+{"fn":"uri_split_summary","args":["http://127.0.0.1/"]}
+{"fn":"uri_split_summary","args":["http://127.0.0.1/1kib.bin?x=1&y=2"]}
+{"fn":"uri_split_summary","args":["http://127.0.0.1/1kib.bin#frag"]}
+{"fn":"uri_split_summary","args":["http://[::1]:18080/1kib.bin"]}
+{"fn":"uri_split_summary","args":["http://127.0.0.1:65536/1kib.bin"]}
+{"fn":"uri_split_summary","args":["http://127.0.0.1:0/1kib.bin"]}
+{"fn":"uri_split_summary","args":[":not-a-uri"]}
+{"fn":"uri_split_summary","args":["héllo wörld"]}
+{"fn":"uri_split_summary","args":["👍🏽 thumbs"]}
+{"fn":"uri_split_summary","args":["日本語"]}
+{"fn":"uri_split_summary","args":["é"]}
+{"fn":"uri_split_summary","args":["İstanbul"]}
+{"fn":"uri_split_summary","args":["straße"]}
+{"fn":"uri_split_summary","args":["ılık ırmak"]}
+{"fn":"uri_split_summary","args":["👨‍👩‍👧 family"]}
+{"fn":"uri_split_summary","args":["a b"]}
+{"fn":"uri_split_summary","args":[""]}
+{"fn":"uri_split_summary","args":["http://"]}
+{"fn":"uri_split_summary","args":["http:/x"]}
+{"fn":"uri_split_summary","args":["http://127.0.0.1:abc/x"]}
+{"fn":"uri_split_summary","args":["file:///etc/passwd"]}
+{"fn":"uri_split_summary","args":["magnet:?xt=urn:btih:abc"]}
