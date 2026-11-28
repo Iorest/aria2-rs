@@ -1,0 +1,23 @@
+# 保护路径（单身份方案：无 GitHub review 闸，本文件只作说明 + 判档脚本的输入参照。
+# 真正的"碰保护路径 @ owner"由 .github/workflows/risk-tier.yml 判档实现。）
+/.github/                        @Iorest
+/scripts/release*                @Iorest
+Dockerfile*                      @Iorest
+/.specify/                       @Iorest
+/specs/                          @Iorest
+
+# 依赖清单与锁文件（按仓库语言保留Relevant的）
+Cargo.toml                       @Iorest
+Cargo.lock                       @Iorest
+Package.swift                    @Iorest
+Package.resolved                 @Iorest
+package.json                     @Iorest
+package-lock.json                @Iorest
+go.mod                           @Iorest
+go.sum                           @Iorest
+
+# 测试与验收材料：写者不能单方面弱化断言（改这些会被 risk-tier 判高档）
+/tests/                          @Iorest
+**/*_test.*                      @Iorest
+**/*.test.*                      @Iorest
+**/*Tests.*                      @Iorest
