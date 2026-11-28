@@ -1,0 +1,15 @@
+[request]
+method = "POST"
+path = "/jsonrpc"
+body = "{"
+
+[request.headers]
+Content-Type = "application/json"
+
+[response]
+status = 500
+
+[response.headers]
+cache-control = "no-cache"
+content-type = "application/json-rpc"
+expires = "[..]"

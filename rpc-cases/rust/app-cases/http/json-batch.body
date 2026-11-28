@@ -1,0 +1,1 @@
+[{"id":10,"jsonrpc":"2.0","result":{[..],"version":"1.37.0"}},{"id":11,"jsonrpc":"2.0","result":["aria2.onDownloadStart","aria2.onDownloadPause","aria2.onDownloadStop","aria2.onDownloadComplete","aria2.onDownloadError","aria2.onBtDownloadComplete"]}]

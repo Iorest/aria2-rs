@@ -1,0 +1,11 @@
+[request]
+method = "GET"
+path = "/jsonrpc?method=aria2.getGlobalStat&id=12&params=WyJ0b2tlbjpsb2NhbC1ycGMtdGVzdC1vbmx5Il0="
+
+[response]
+status = 200
+
+[response.headers]
+cache-control = "no-cache"
+content-type = "application/json-rpc"
+expires = "[..]"

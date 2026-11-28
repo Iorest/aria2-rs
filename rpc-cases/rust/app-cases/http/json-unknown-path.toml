@@ -1,0 +1,14 @@
+[request]
+method = "POST"
+path = "/nope"
+body = "{}"
+
+[request.headers]
+Content-Type = "application/json"
+
+[response]
+status = 404
+
+[response.headers]
+cache-control = "no-cache"
+expires = "[..]"

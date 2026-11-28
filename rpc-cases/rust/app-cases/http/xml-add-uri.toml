@@ -1,0 +1,15 @@
+[request]
+method = "POST"
+path = "/rpc"
+body = '<?xml version="1.0"?><methodCall><methodName>aria2.addUri</methodName><params><param><value><string>token:local-rpc-test-only</string></value></param><param><value><array><data><value><string>http://127.0.0.1:18080/1kib.bin</string></value></data></array></value></param></params></methodCall>'
+
+[request.headers]
+Content-Type = "text/xml"
+
+[response]
+status = 200
+
+[response.headers]
+cache-control = "no-cache"
+content-type = "text/xml"
+expires = "[..]"

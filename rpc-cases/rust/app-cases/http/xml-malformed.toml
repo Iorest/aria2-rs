@@ -1,0 +1,14 @@
+[request]
+method = "POST"
+path = "/rpc"
+body = "<methodCall><methodName>x"
+
+[request.headers]
+Content-Type = "text/xml"
+
+[response]
+status = 400
+
+[response.headers]
+cache-control = "no-cache"
+expires = "[..]"

@@ -841,6 +841,50 @@ pub fn try_run(args: &[OsString]) -> Option<ExitCode> {
     Some(ExitCode::SUCCESS)
 }
 
+/// Result of a download started through RPC. RPC has no console readout, so
+/// the HTTP core returns the same bytes and metadata in structured form.
+#[derive(Debug, Clone)]
+pub struct Fetched {
+    pub path: String,
+    pub total_length: u64,
+    pub piece_length: u64,
+    pub num_pieces: u64,
+    pub bitfield: String,
+}
+
+/// Runs one URI through the same download core as the CLI front door, without
+/// printing the CLI's terminal summary. `None` means the URI is not ours.
+pub fn rpc_fetch(uri: &str, dir: &str, ca: Option<&str>) -> Option<Result<Fetched, String>> {
+    let opts = Options {
+        dir: dir.to_owned(),
+        ca_cert: ca.map(str::to_owned),
+        ..Options::default()
+    };
+    let target = target_for(uri, &opts)?;
+    match download(&target, &opts)? {
+        Ok(()) => {}
+        Err(kind) => return Some(Err(kind)),
+    }
+    let total_length = std::fs::metadata(&target.path).ok()?.len();
+    let piece_length = 1 << 20;
+    let num_pieces = total_length.div_ceil(piece_length).max(1);
+    // aria2@1.37.0 src/PieceStorage.cc: a completed one-piece download has
+    // the single high bit set; unused trailing bits stay zero.
+    let mut bits = vec![0u8; num_pieces.div_ceil(8) as usize];
+    bits[0] = 0x80;
+    let bitfield = bits
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    Some(Ok(Fetched {
+        path: target.path,
+        total_length,
+        piece_length,
+        num_pieces,
+        bitfield,
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

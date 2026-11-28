@@ -113,7 +113,7 @@ python3 test-env/gen_certs.py   # 写 test-env/certs/{ca,server}.{crt,key}
 
 - `manifest.json` 记录 `{"文件名": {"size", "sha256"}}`，**入 git**；`setup.sh` 每次重新生成并执行 `git diff --exit-code test-env/manifest.json` —— 确定性闸门，夹具漂移即失败。
 - 夹具本体不进 git（生成物），经 `--fresh` 快照进每个 case（§2.3）。
-- 阶段扩展点：RPC（阶段 3）复用 HTTP 端口（aria2c `--enable-rpc` 起 loopback 服务端，按工具语义用 `--http` 录制）；BT（阶段 4）增本地 tracker 与自制 metainfo；Metalink（阶段 5）增自制 XML。均遵循 §1.2「只用副本」原则，各阶段 ADR（`rust/DECISIONS.md`，TELE-91 起）产出后回填本节链接。
+- 阶段扩展点：RPC（阶段 3）复用 HTTP 端口（aria2c `--enable-rpc` 起 loopback 服务端，按工具语义用 `--http` 录制）；BT（阶段 4）增本地 tracker 与自制 metainfo；Metalink（阶段 5）增自制 XML。均遵循 §1.2「只用副本」原则，各阶段 ADR（`rust/DECISIONS.md`，TELE-91 起）产出后回填本节链接。**阶段 3 已落地**：`rpc-cases/` 独立录制根，服务端只绑 127.0.0.1，合成 token `local-rpc-test-only` 仅用于 loopback；CI 原版构建启用 expat 以保证 `/rpc` 端点存在（aria2@1.37.0 configure.ac:623-633）。
 
 ## 6. 网络边界与强制手段（验收项 2 之一）
 
