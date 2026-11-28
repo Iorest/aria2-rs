@@ -852,6 +852,17 @@ pub struct Fetched {
     pub bitfield: String,
 }
 
+/// Hex bitfield for a fully downloaded set of pieces (E15 terminal bitfield).
+fn completed_bitfield(num_pieces: u64) -> String {
+    let mut bits = vec![0xffu8; num_pieces.div_ceil(8) as usize];
+    if num_pieces % 8 != 0 {
+        if let Some(last) = bits.last_mut() {
+            *last = 0xff << (8 - num_pieces % 8);
+        }
+    }
+    bits.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
 /// Runs one URI through the same download core as the CLI front door, without
 /// printing the CLI's terminal summary. `None` means the URI is not ours.
 pub fn rpc_fetch(uri: &str, dir: &str, ca: Option<&str>) -> Option<Result<Fetched, String>> {
@@ -868,14 +879,7 @@ pub fn rpc_fetch(uri: &str, dir: &str, ca: Option<&str>) -> Option<Result<Fetche
     let total_length = std::fs::metadata(&target.path).ok()?.len();
     let piece_length = 1 << 20;
     let num_pieces = total_length.div_ceil(piece_length).max(1);
-    // aria2@1.37.0 src/PieceStorage.cc: a completed one-piece download has
-    // the single high bit set; unused trailing bits stay zero.
-    let mut bits = vec![0u8; num_pieces.div_ceil(8) as usize];
-    bits[0] = 0x80;
-    let bitfield = bits
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect::<String>();
+    let bitfield = completed_bitfield(num_pieces);
     Some(Ok(Fetched {
         path: target.path,
         total_length,
@@ -1013,5 +1017,12 @@ mod tests {
         assert_eq!(std::fs::metadata(&path).unwrap().len(), 1 << 20);
         assert!(!Path::new(&format!("{path}.aria2")).exists());
         std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn completed_bitfield_sets_every_piece_and_clears_unused_bits() {
+        assert_eq!(completed_bitfield(1), "80");
+        assert_eq!(completed_bitfield(8), "ff");
+        assert_eq!(completed_bitfield(21), "fffff8");
     }
 }

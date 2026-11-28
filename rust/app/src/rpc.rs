@@ -110,6 +110,7 @@ struct Download {
     status: String,
     uri: String,
     path: String,
+    dir: String,
     total_length: u64,
     completed_length: u64,
     piece_length: u64,
@@ -438,19 +439,30 @@ fn new_gid(state: &Mutex<RpcState>) -> String {
     digest[..8].iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
+/// Output path aria2 would use for a URI in `dir` (EQUIVALENCE E9).
+fn output_path(uri: &str, dir: &str) -> String {
+    let tail = uri.split(['?', '#']).next().unwrap_or(uri);
+    match tail.rsplit('/').next() {
+        Some(name) if !name.is_empty() => format!("{}/{}", dir.trim_end_matches('/'), name),
+        _ => dir.to_owned(),
+    }
+}
+
+/// aria2@1.37.0 src/message.h:173 (EX_SOCKET_CONNECT).
+fn aria2_error_message(kind: &str) -> String {
+    match kind {
+        "connect" => "Failed to establish connection, cause: Connection refused".to_owned(),
+        "eof" => "Connection closed.".to_owned(),
+        other => other.to_owned(),
+    }
+}
+
 fn status_of(download: &Download) -> Value {
     let mut status = serde_json::Map::new();
-    let fields: [(&str, String); 14] = [
-        ("bitfield", download.bitfield.clone()),
+    let mut fields: Vec<(&str, String)> = vec![
         ("completedLength", download.completed_length.to_string()),
         ("connections", "0".to_owned()),
-        (
-            "dir",
-            download
-                .path
-                .rsplit_once('/')
-                .map_or(download.path.clone(), |(dir, _)| dir.to_owned()),
-        ),
+        ("dir", download.dir.clone()),
         ("downloadSpeed", "0".to_owned()),
         ("errorCode", download.error_code.clone()),
         ("errorMessage", download.error_message.clone()),
@@ -462,12 +474,20 @@ fn status_of(download: &Download) -> Value {
         ("uploadLength", "0".to_owned()),
         ("uploadSpeed", "0".to_owned()),
     ];
+    // EQUIVALENCE E14: bitfield is a conditional key; error downloads have none.
+    if download.status == "complete" && !download.bitfield.is_empty() {
+        fields.push(("bitfield", download.bitfield.clone()));
+    }
     for (key, value) in fields {
         status.insert(key.to_owned(), Value::String(value));
     }
     let mut file = serde_json::Map::new();
-    let path = download.path.clone();
     let uri = download.uri.clone();
+    let path = if download.status == "error" {
+        String::new()
+    } else {
+        download.path.clone()
+    };
     file.insert(
         "completedLength".to_owned(),
         Value::String(download.completed_length.to_string()),
@@ -489,7 +509,6 @@ fn status_of(download: &Download) -> Value {
     status.insert("files".to_owned(), Value::Array(vec![Value::Object(file)]));
     Value::Object(status)
 }
-
 
 async fn execute(state: &AppState, method: &str, params: Vec<Value>) -> Result<Value, String> {
     match method {
@@ -516,58 +535,99 @@ async fn execute(state: &AppState, method: &str, params: Vec<Value>) -> Result<V
             }))
         }
         "aria2.addUri" => {
-            let Some(Value::Array(uris)) = params.first() else {
+            let Some(Value::Array(raw_uris)) = params.first() else {
                 return Err("URI is not provided.".to_owned());
             };
-            let Some(Value::String(uri)) = uris.first() else {
+            let uris: Vec<String> = raw_uris
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::to_owned)
+                .collect();
+            let Some(first) = uris.first() else {
                 return Err("URI is not provided.".to_owned());
             };
+            // aria2@1.37.0 src/RpcMethodImpl.cc:228-258: the second argument
+            // is an options dict; `dir` overrides the server default.
+            let dir = params
+                .get(1)
+                .and_then(Value::as_object)
+                .and_then(|options| options.get("dir"))
+                .and_then(Value::as_str)
+                .unwrap_or(&state.dir)
+                .to_owned();
             let gid = new_gid(&state.inner);
-            let dir = state.dir.clone();
-            let download_dir = dir.clone();
-            let ca = state.ca.clone();
-            let download_uri = uri.clone();
-            let fetched = tokio::task::spawn_blocking(move || {
-                engine::rpc_fetch(&download_uri, &download_dir, ca.as_deref())
-            })
-            .await
-            .ok()
-            .flatten();
-            let entry = match fetched {
-                Some(Ok(fetched)) => Download {
-                    gid: gid.clone(),
-                    status: "complete".to_owned(),
-                    uri: uri.clone(),
-                    path: fetched.path,
-                    total_length: fetched.total_length,
-                    completed_length: fetched.total_length,
-                    piece_length: fetched.piece_length,
-                    num_pieces: fetched.num_pieces,
-                    bitfield: fetched.bitfield,
-                    error_code: "0".to_owned(),
-                    error_message: String::new(),
-                },
-                Some(Err(kind)) => Download {
-                    gid: gid.clone(),
-                    status: "error".to_owned(),
-                    uri: uri.clone(),
-                    path: dir,
-                    total_length: 0,
-                    completed_length: 0,
-                    piece_length: 1 << 20,
-                    num_pieces: 0,
-                    bitfield: String::new(),
-                    error_code: "1".to_owned(),
-                    error_message: kind,
-                },
-                None => return Err("URI is not provided.".to_owned()),
+            let pending = Download {
+                gid: gid.clone(),
+                status: "active".to_owned(),
+                uri: first.clone(),
+                path: output_path(first, &dir),
+                dir: dir.clone(),
+                total_length: 0,
+                completed_length: 0,
+                piece_length: 1 << 20,
+                num_pieces: 0,
+                bitfield: String::new(),
+                error_code: "0".to_owned(),
+                error_message: String::new(),
             };
             state
                 .inner
                 .lock()
                 .expect("RPC state poisoned")
                 .downloads
-                .push(entry);
+                .push(pending);
+            // addUri returns immediately: clients must be able to observe the
+            // active state while the download runs (E14/E15).
+            let inner = Arc::clone(&state.inner);
+            let ca = state.ca.clone();
+            let download_gid = gid.clone();
+            tokio::spawn(async move {
+                let result = tokio::task::spawn_blocking(move || {
+                    let mut last_failure = None;
+                    for uri in &uris {
+                        match engine::rpc_fetch(uri, &dir, ca.as_deref()) {
+                            Some(Ok(fetched)) => return Some(Ok(fetched)),
+                            Some(Err(kind)) => last_failure = Some(kind),
+                            None => {}
+                        }
+                    }
+                    last_failure.map(Err)
+                })
+                .await
+                .ok()
+                .flatten();
+                let mut state = inner.lock().expect("RPC state poisoned");
+                let Some(download) = state
+                    .downloads
+                    .iter_mut()
+                    .find(|download| download.gid == download_gid)
+                else {
+                    return;
+                };
+                match result {
+                    Some(Ok(fetched)) => {
+                        download.status = "complete".to_owned();
+                        download.path = fetched.path;
+                        download.total_length = fetched.total_length;
+                        download.completed_length = fetched.total_length;
+                        download.piece_length = fetched.piece_length;
+                        download.num_pieces = fetched.num_pieces;
+                        download.bitfield = fetched.bitfield;
+                    }
+                    Some(Err(kind)) => {
+                        download.status = "error".to_owned();
+                        download.error_code = "1".to_owned();
+                        download.error_message = aria2_error_message(&kind);
+                        download.path = String::new();
+                    }
+                    None => {
+                        download.status = "error".to_owned();
+                        download.error_code = "1".to_owned();
+                        download.error_message = "URI is not provided.".to_owned();
+                        download.path = String::new();
+                    }
+                }
+            });
             Ok(Value::String(gid))
         }
         "aria2.tellStatus" => {
@@ -715,6 +775,26 @@ impl XmlNode {
     }
 }
 
+/// XML character references must reach RPC parameters unchanged (EQUIVALENCE
+/// E18 / aria2方言). quick-xml 0.42 reports `&amp;` as `Event::GeneralRef`.
+fn decode_xml_entity(name: &str) -> String {
+    match name {
+        "amp" | "#38" | "#x26" | "#X26" => "&".to_owned(),
+        "lt" | "#60" | "#x3c" | "#X3C" => "<".to_owned(),
+        "gt" | "#62" | "#x3e" | "#X3E" => ">".to_owned(),
+        "quot" | "#34" | "#x22" | "#X22" => "\"".to_owned(),
+        "apos" | "#39" | "#x27" | "#X27" => "'".to_owned(),
+        other if other.starts_with('#') => char::from_u32(
+            other
+                .trim_start_matches(['#', 'x', 'X'])
+                .parse::<u32>()
+                .unwrap_or(0),
+        )
+        .map_or_else(|| format!("&{other};"), |ch| ch.to_string()),
+        other => format!("&{other};"),
+    }
+}
+
 fn parse_xml(text: &str) -> Option<XmlNode> {
     let mut reader = Reader::from_str(text);
     let mut stack: Vec<XmlNode> = Vec::new();
@@ -729,6 +809,17 @@ fn parse_xml(text: &str) -> Option<XmlNode> {
                 }
             }
             Ok(Event::Text(text)) => {
+                if let Some(node) = stack.last_mut() {
+                    node.text.push_str(text.as_ref());
+                }
+            }
+            Ok(Event::GeneralRef(entity)) => {
+                let decoded = decode_xml_entity(entity.as_ref());
+                if let Some(node) = stack.last_mut() {
+                    node.text.push_str(&decoded);
+                }
+            }
+            Ok(Event::CData(text)) => {
                 if let Some(node) = stack.last_mut() {
                     node.text.push_str(text.as_ref());
                 }
@@ -943,5 +1034,42 @@ mod tests {
         assert_eq!(percent_decode("aria2.getGlobalStat"), "aria2.getGlobalStat");
         let bytes = decode_base64("WyJ0b2tlbjpsb2NhbC1ycGMtdGVzdC1vbmx5Il0=").expect("base64");
         assert_eq!(bytes, br#"["token:local-rpc-test-only"]"#);
+    }
+
+    #[test]
+    fn e18_xml_character_references_reach_parameters() {
+        let body = "<?xml version=\"1.0\"?><methodCall><methodName>aria2.addUri</methodName><params><param><value><string>http://127.0.0.1:18080/1kib.bin?a=1&amp;b=2&lt;3</string></value></param></params></methodCall>";
+        let call = parse_xml(body).expect("call parses");
+        let params = xml_request_params(&call);
+        assert_eq!(
+            params[0],
+            json!("http://127.0.0.1:18080/1kib.bin?a=1&b=2<3")
+        );
+    }
+
+    #[test]
+    fn e14_error_status_has_no_bitfield_and_keeps_options_dir() {
+        let download = Download {
+            gid: "0123456789abcdef".to_owned(),
+            status: "error".to_owned(),
+            uri: "http://127.0.0.1:18099/nope.bin".to_owned(),
+            path: String::new(),
+            dir: "/tmp/aria2-dir".to_owned(),
+            total_length: 0,
+            completed_length: 0,
+            piece_length: 1 << 20,
+            num_pieces: 0,
+            bitfield: String::new(),
+            error_code: "1".to_owned(),
+            error_message: aria2_error_message("connect"),
+        };
+        let status = status_of(&download);
+        assert!(status.get("bitfield").is_none());
+        assert_eq!(status["dir"], json!("/tmp/aria2-dir"));
+        assert_eq!(
+            status["errorMessage"],
+            json!("Failed to establish connection, cause: Connection refused")
+        );
+        assert_eq!(status["files"][0]["path"], json!(""));
     }
 }

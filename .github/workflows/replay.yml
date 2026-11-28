@@ -86,12 +86,15 @@ jobs:
 
       - name: G4 - combined fallback below stage-2 baseline 42.7%
         run: |
-          cli=$(sed -n 's/^Fallback rate: \([0-9.]*\)%.*/\1/p' rust/app-cases/replay-report.md)
-          rpc=$(sed -n 's/^Fallback rate: \([0-9.]*\)%.*/\1/p' rpc-cases/rust/app-cases/replay-report.md)
-          cli_fb=$(sed -n 's/^Fallback rate: [0-9.]*% (\([0-9]*\)\/.*/\1/p' rust/app-cases/replay-report.md)
-          rpc_fb=$(sed -n 's/^Fallback rate: [0-9.]*% (\([0-9]*\)\/.*/\1/p' rpc-cases/rust/app-cases/replay-report.md)
-          echo "CLI fallback=$cli%, RPC fallback=$rpc%"
-          awk -v fb="$((cli_fb + rpc_fb))" -v total=210 'BEGIN {
+          cli_fb=$(sed -n 's/^Fallback rate: [0-9.]*% (\([0-9]*\)\/[0-9]*.*/\1/p' rust/app-cases/replay-report.md)
+          rpc_fb=$(sed -n 's/^Fallback rate: [0-9.]*% (\([0-9]*\)\/[0-9]*.*/\1/p' rpc-cases/rust/app-cases/replay-report.md)
+          cli_total=$(sed -n 's/^Fallback rate: [0-9.]*% ([0-9]*\/\([0-9]*\).*/\1/p' rust/app-cases/replay-report.md)
+          rpc_total=$(sed -n 's/^Fallback rate: [0-9.]*% ([0-9]*\/\([0-9]*\).*/\1/p' rpc-cases/rust/app-cases/replay-report.md)
+          for value in "$cli_fb" "$rpc_fb" "$cli_total" "$rpc_total"; do
+            case "$value" in ''|*[!0-9]*) echo 'FAIL: missing fallback counts in replay reports'; exit 1 ;; esac
+          done
+          echo "CLI fallback=$cli_fb/$cli_total, RPC fallback=$rpc_fb/$rpc_total"
+          awk -v fb="$((cli_fb + rpc_fb))" -v total="$((cli_total + rpc_total))" 'BEGIN {
             rate = 100 * fb / total
             printf "combined fallback=%.1f%% (%d/%d)\n", rate, fb, total
             if (rate >= 42.7) exit 1

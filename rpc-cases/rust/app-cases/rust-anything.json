@@ -20,9 +20,9 @@
   "normalizers": {
     "expires": "^[A-Z][a-z]{2}, \\d{2} [A-Z][a-z]{2} \\d{4} \\d{2}:\\d{2}:\\d{2} GMT$",
     "features": "\"enabledFeatures\":\\[[^]]*\\]",
-    "xml-features": "enabledFeatures</name><value><array><data>.*?</data></array></value>",
     "gid": "[0-9a-f]{16}",
-    "speed": "\"(downloadSpeed|uploadSpeed|connections|numSeeders|numActive|numWaiting|numStopped|numStoppedTotal|uploadLength)\":\"[0-9]+\""
+    "speed": "\"(downloadSpeed|uploadSpeed|connections|numSeeders)\":\"[0-9]+\"",
+    "xml-features": "enabledFeatures</name><value><array><data>.*?</data></array></value>"
   },
   "timeout_secs": 120,
   "http": {
@@ -31,7 +31,7 @@
       "--rpc-listen-port={port}",
       "--rpc-secret=local-rpc-test-only"
     ],
-    "pace_ms": 200
+    "pace_ms": 500
   },
   "recorded": [
     "json-add-uri",
@@ -53,6 +53,8 @@
     "json-unknown-method",
     "json-unknown-path",
     "xml-add-uri",
+    "xml-add-uri-amp",
+    "xml-add-uri-lt",
     "xml-get-version",
     "xml-global-stat",
     "xml-list-methods",
