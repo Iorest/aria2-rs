@@ -38,7 +38,8 @@ jobs:
           echo "风险档：$tier" >> "$GITHUB_STEP_SUMMARY"
           gh pr comment "$PR" --body "风险档（脚本判定）：$tier。低/标准统筹直接合并；高/不可回退 @ owner 本人。统筹按此档走，明镜核对。"
 
-          # 高/不可回退档让 check 失败，强制走 owner，避免统筹误合
+          # 软闸：高/不可回退只发 warning + PR 评论 @ owner，不 fail（单身份无 review 闸，
+          # 硬拦会让 owner 自己都合不了）。统筹看到高档会停手 @ owner，靠流程而非 check 强制。
           if [ "$tier" = "high" ] || [ "$tier" = "irreversible" ]; then
             echo "::warning::风险档 $tier，需 owner 本人处理"
           fi
