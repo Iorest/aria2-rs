@@ -73,10 +73,15 @@ jobs:
           done
 
       - name: G1 - original replay 100%
-        run: rust-anything app replay . --build "$RUN"
+        run: rust-anything app replay . --build "test-env/replay-home.sh $RUN"
 
-      - name: G2 - front-door replay 100%, fallback 100%
-        run: rust-anything app replay . --build rust/app/target/debug/aria2c
+      - name: G2 - front-door replay 100%, fallback below baseline
+        run: rust-anything app replay . --build "test-env/replay-home.sh rust/app/target/debug/aria2c"
+      - name: G4 - fallback below stage-1 baseline
+        run: |
+          rate=$(sed -n 's/^Fallback rate: \([0-9.]*\)%.*/\1/p' rust/app-cases/replay-report.md)
+          echo "fallback=$rate%"
+          awk -v r="$rate" 'BEGIN { if (!(r < 100.0)) exit 1 }'
 
       - name: GID mapping comparator (EQUIVALENCE N1)
         run: python3 test-env/check-gid-consistency.py rust/app/target/debug/aria2c

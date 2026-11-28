@@ -6,7 +6,8 @@
 //! magnet link or local torrent/metalink file. This module reproduces only
 //! that rejection path; every argument that looks like a URI is still handed
 //! to the original.
-
+// Explicit `to_str()` failure is a deliberate decline-to-handle, not an error.
+#![allow(clippy::question_mark)]
 use std::ffi::OsString;
 use std::path::Path;
 use std::process::ExitCode;

@@ -88,8 +88,8 @@ TELE-96（0.8）交付物。阶段 1 任务（TELE-97）可直接引用 §3 与 
 | 闸门 | 命令 | 通过条件 | 启用 |
 |---|---|---|---|
 | G0 环境与边界预检 | `test-env/serve.sh check`；TEST-ENV §6(3) 白名单 grep；§7 scrub grep | 三者全过 | 首轮 |
-| G1 原版回放 | `rust-anything app replay . --build "<完整运行串>"`，串内容和 §8 record `--` 之后一致 | exit 0，报告 `Passed: N/N`（原版 100% 是阶段闸门） | 首轮 |
-| G2 前门回放 | `rust-anything app replay . --build <front-door 二进制>` | exit 0，`Passed: N/N` 且 `Fallback rate: 100%` | TELE-97 落地 front-door 后 |
+| G1 原版回放 | `rust-anything app replay . --build "test-env/replay-home.sh <完整运行串>"`，串内容和 §8 record `--` 之后一致 | exit 0，报告 `Passed: N/N`（原版 100% 是阶段闸门） | 首轮；阶段 2 起加 HOME wrapper |
+| G2 前门回放 | `rust-anything app replay . --build "test-env/replay-home.sh <front-door 二进制>"` | exit 0，`Passed: N/N` 且 fallback 低于上一阶段基线 | TELE-97 落地 front-door 后；阶段 2 起加 HOME wrapper |
 | G3 报告零漂移 | replay 后 `git diff --exit-code -- rust/app-cases` | diff 为空；有 diff 即 PR 必须有意更新快照并在描述中指出对应行为变化与口径编号 | 首轮 |
 | G4 fallback 下降 | 同 G2，断言 Fallback rate ≤ 上一阶段基线（数字记入 rust/MAP.md） | 阈值递减 | 阶段 2 起，首轮占位 |
 

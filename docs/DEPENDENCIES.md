@@ -54,7 +54,7 @@ $ find . -path ./.git -prune -o \( -name "*.cc" -o -name "*.h" -o -name "*.c" \)
 | 事件循环/并发 | tokio | 1.54.1 / 2026-10-21 | ok | 取代 DownloadEngine 事件模型与 5 个 EventPoll 后端 |
 | CLI 参数解析（前门阶段） | clap | 4.6.10 / 2026-11-27 锁定 | ok | `rust/app` 前门按录制品生成命令/flag 解析器；阶段 2 起逐单元接管，阶段 7 前不得把前门当最终 CLI |
 | socket 选项 | socket2 | 0.6.5 / 2026-11-24 | ok | TCP_NODELAY、SO_REUSEADDR、bind 逐项对照 |
-| TLS | rustls + rustls-native-certs | 0.24.0-dev.3 / 2026-11-12；0.8.5 / 2026-10-13 | ok | 收敛 4 个 TLS 后端为 1；证书行为差异交 EQUIVALENCE 契约 |
+| TLS | rustls + rustls-pemfile（阶段 2 实测收敛） | 0.23.46（ring feature）/ 2.2.0；调研候选 0.24.0-dev.3 无稳定 crypto provider | ok | 收敛 4 个 TLS 后端为 1；`--ca-certificate` 真实校验，全仓无 `--check-certificate=false` |
 | DNS | tokio::net::lookup_host（getaddrinfo） | — | ok | 等价性基线（与原版默认路径一致） |
 | 异步 DNS（--async-dns 对应） | hickory-resolver | 0.26.4 / 2026-11-24 | partial | 行为 ≠ c-ares；解析结果差异需契约裁定，列为可选后端 |
 | JSON | serde + serde_json | 1.0.229 / 2026-07-18；1.0.154 / 2026-10-11 | ok | 取代自写 JsonParser |
