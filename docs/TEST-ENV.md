@@ -48,7 +48,7 @@ aria2-rs/
 
 隔离规则：
 
-1. **进程隔离**：录制命令以 `HOME=<repo>/test-env/home`（空目录）启动，并显式 `--no-conf` 双保险。rust-anything 的 replay sandbox 不继承该 HOME；阶段 2 起前门在每次回落原版时由 `rust/app/src/original.rs::run_with` 显式注入 `HOME=<repo>/test-env/home`，严格 HOME 隔离已落地；`--no-conf` 仍是双保险。
+1. **进程隔离**：录制命令以 `HOME=<repo>/test-env/home`（空目录）启动，并显式 `--no-conf` 双保险。rust-anything 的 replay sandbox 不继承该 HOME；阶段 2 起 G1/G2 统一用 `test-env/replay-home.sh` 作为 `--build` 前缀设置该 HOME，使原版与前门在同一隔离环境下对比。**产品代码不改子进程 HOME**（`original::run` 保持真实用户环境，避免破坏 `~/.netrc`）；wrapper 只覆盖回放/测试层，未使用 wrapper 的真实运行不受影响。
 2. **写隔离**：aria2c 一律 `--dir=downloads`（相对 cwd）；`.aria2` 控制文件与日志都落在该子树，不落 repo 其他位置、不落 `$HOME`。
 3. **case 隔离**：`app record --fresh <路径>` 把 fixtures / certs / downloads 快照进每个用例独立的全新工作目录，用例结束后对「写了什么 / 删了什么」做 diff —— 这是下载产物比对（EQUIVALENCE §下载产物）的机制基础。
    ✅ **TELE-97 实测**：布局不扁平化——快照落在 `<case>/files/test-env/fixtures/...`、`files/test-env/certs/...`、`files/downloads/...`，cases 与 `--ca-certificate` 的相对路径无需改写。

@@ -1,6 +1,6 @@
 # App replay
 
-Build: `rust/app/target/debug/aria2c`
+Build: `test-env/replay-home.sh rust/app/target/debug/aria2c`
 
 Passed: 185/185
 

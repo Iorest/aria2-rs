@@ -252,6 +252,9 @@ fn decode_chunked(body: &[u8]) -> Option<Vec<u8>> {
         let size = usize::from_str_radix(size_text.split(';').next()?.trim(), 16).ok()?;
         pos = end + 2;
         if size == 0 {
+            if body.len() < pos + 2 || &body[pos..pos + 2] != b"\r\n" {
+                return None;
+            }
             return Some(out);
         }
         if body.len() < pos + size + 2 || &body[pos + size..pos + size + 2] != b"\r\n" {
@@ -447,6 +450,8 @@ fn send_request(
     if !head {
         reader.read_to_end(&mut body)?;
         if chunked {
+            // Chunked framing invalidates Content-Length for EOF checks.
+            content_length = None;
             body = decode_chunked(&body).ok_or_else(invalid)?;
         }
     }
@@ -681,7 +686,7 @@ fn download(target: &Target, opts: &Options) -> Option<Result<(), String>> {
     } else {
         Some(total_length(&target.uri, ca).ok()?)
     };
-    if total.is_some_and(|t| local >= t) {
+    if local > 0 && total.is_some_and(|t| local >= t) {
         // Already complete: aria2 keeps the file untouched and reports success.
         return Some(Ok(()));
     }
@@ -827,6 +832,11 @@ pub fn try_run(args: &[OsString]) -> Option<ExitCode> {
         }
         verified = true;
     }
+    // EQUIVALENCE E11: aria2 removes the control file once the download is
+    // complete, including after a resumed download finishes.
+    for path in &written {
+        let _ = std::fs::remove_file(format!("{path}.aria2"));
+    }
     report_success(&written, verified);
     Some(ExitCode::SUCCESS)
 }
@@ -899,6 +909,65 @@ mod tests {
             u64::from_be_bytes(bytes[14..22].try_into().unwrap()),
             1 << 20
         );
+        std::fs::remove_dir_all(dir).ok();
+    }
+    fn spawn_http(body: Vec<u8>) -> u16 {
+        use std::net::TcpListener;
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        thread::spawn(move || {
+            for _ in 0..3 {
+                let Ok((mut stream, _)) = listener.accept() else {
+                    break;
+                };
+                let mut request = [0u8; 4096];
+                let n = stream.read(&mut request).unwrap_or(0);
+                let head = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                    body.len()
+                );
+                let _ = stream.write_all(head.as_bytes());
+                if !request[..n].starts_with(b"HEAD") {
+                    let _ = stream.write_all(&body);
+                }
+            }
+        });
+        port
+    }
+
+    #[test]
+    fn resume_empty_resource_creates_the_file() {
+        let dir = std::env::temp_dir().join(format!("aria2rs-empty-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let port = spawn_http(Vec::new());
+        let uri = format!("http://127.0.0.1:{port}/empty.bin");
+        let args = vec![
+            OsString::from(format!("--dir={}", dir.display())),
+            OsString::from("-c"),
+            OsString::from(uri),
+        ];
+        assert_eq!(try_run(&args), Some(ExitCode::SUCCESS));
+        assert_eq!(std::fs::metadata(dir.join("empty.bin")).unwrap().len(), 0);
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn resume_completion_removes_control_file() {
+        let dir = std::env::temp_dir().join(format!("aria2rs-resume-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("1mib.bin").display().to_string();
+        std::fs::write(&path, vec![0x41; 4096]).unwrap();
+        write_control_file(&path, 1 << 20, 1 << 20).unwrap();
+        let port = spawn_http(vec![0x41; 1 << 20]);
+        let uri = format!("http://127.0.0.1:{port}/1mib.bin");
+        let args = vec![
+            OsString::from(format!("--dir={}", dir.display())),
+            OsString::from("-c"),
+            OsString::from(uri),
+        ];
+        assert_eq!(try_run(&args), Some(ExitCode::SUCCESS));
+        assert_eq!(std::fs::metadata(&path).unwrap().len(), 1 << 20);
+        assert!(!Path::new(&format!("{path}.aria2")).exists());
         std::fs::remove_dir_all(dir).ok();
     }
 }
