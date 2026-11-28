@@ -703,7 +703,9 @@ fn download(target: &Target, opts: &Options) -> Option<Result<(), String>> {
             return Some(Ok(()));
         }
         if response.status != 200 && response.status != 206 {
-            return None;
+            // CLI still falls back on unknown error kinds; RPC maps the
+            // HTTP status to an aria2 error code (src/error_code.h:49).
+            return Some(Err(format!("http-{}", response.status)));
         }
         if response
             .content_length

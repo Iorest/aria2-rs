@@ -54,6 +54,7 @@
     "json-unknown-path",
     "xml-add-uri",
     "xml-add-uri-amp",
+    "xml-add-uri-hex",
     "xml-add-uri-lt",
     "xml-get-version",
     "xml-global-stat",

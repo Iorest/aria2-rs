@@ -62,7 +62,7 @@ TELE-96（0.8）交付物。阶段 1 任务（TELE-97）可直接引用 §3 与 
 
 ### 3.3 延后来源（不进首轮，各阶段任务引用本节回填）
 
-- **RPC（阶段 3，TELE-99 已回填）**：手册 §EXAMPLE › RPC（SSL/TLS）与 OPTIONS 里 `aria2.addUri`/`tellStatus`/`system.listMethods` 等的 JSON-RPC/XML-RPC 示例；录制形态 `app record --http`，端口按 TEST-ENV §5 阶段扩展点。实测 27 例落在 `rpc-cases/rust/app-cases/http/`（独立于 185 条 CLI 用例，因 4.2.0 每个录制根只有一个 `config.http` 开关），输入清单 `cases/rpc.jsonl`，原版 27/27、前门 27/27、fallback=0.0%。
+- **RPC（阶段 3，TELE-99 已回填）**：手册 §EXAMPLE › RPC（SSL/TLS）与 OPTIONS 里 `aria2.addUri`/`tellStatus`/`system.listMethods` 等的 JSON-RPC/XML-RPC 示例；录制形态 `app record --http`，端口按 TEST-ENV §5 阶段扩展点。实测 28 例落在 `rpc-cases/rust/app-cases/http/`（独立于 185 条 CLI 用例，因 4.2.0 每个录制根只有一个 `config.http` 开关），输入清单 `cases/rpc.jsonl`，原版 28/28、前门 28/28、fallback=0.0%。
 - **BitTorrent（阶段 4）**：§EXAMPLE › BitTorrent Download 全部（本地 torrent、magnet、-j2、-T 混跑、select-file、index-out、seed 条件、tracker 替换、DHT、加密）。夹具自制 metainfo + 本地 tracker。
 - **Metalink（阶段 5）**：§EXAMPLE › Metalink Download 全部 + `-V` 修复（Throttle 示例顺带）。夹具自制 XML。
 - **代理示例**（Using a proxy 两组）：与 TEST-ENV §6 死代理防线直接冲突，**永不录制**；代理失败语义已由公共参数在每条用例中体现。

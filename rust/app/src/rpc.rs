@@ -9,6 +9,7 @@
 use std::ffi::OsString;
 use std::net::TcpListener;
 use std::process::ExitCode;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -118,6 +119,7 @@ struct Download {
     bitfield: String,
     error_code: String,
     error_message: String,
+    cancel: Arc<AtomicBool>,
 }
 
 fn option<'a>(args: &'a [OsString], name: &str) -> Option<&'a str> {
@@ -448,13 +450,25 @@ fn output_path(uri: &str, dir: &str) -> String {
     }
 }
 
-/// aria2@1.37.0 src/message.h:173 (EX_SOCKET_CONNECT).
+/// kind -> (errorCode, errorMessage) from aria2@1.37.0 src/error_code.h and
+/// src/message.h:147/173; CLI fallback semantics never reach this map.
+fn aria2_error(kind: &str) -> (String, String) {
+    let (code, message) = match kind {
+        "connect" => ("1", "Failed to establish connection, cause: Connection refused"),
+        "http-404" => ("3", "Resource not found"),
+        "eof" => ("1", "Connection closed."),
+        other => ("1", other),
+    };
+    (code.to_owned(), message.to_owned())
+}
+
 fn aria2_error_message(kind: &str) -> String {
-    match kind {
-        "connect" => "Failed to establish connection, cause: Connection refused".to_owned(),
-        "eof" => "Connection closed.".to_owned(),
-        other => other.to_owned(),
-    }
+    aria2_error(kind).1
+}
+
+/// aria2's stopped result set: complete, error and removed (not paused).
+fn is_terminal(status: &str) -> bool {
+    matches!(status, "complete" | "error" | "removed")
 }
 
 fn status_of(download: &Download) -> Value {
@@ -464,8 +478,6 @@ fn status_of(download: &Download) -> Value {
         ("connections", "0".to_owned()),
         ("dir", download.dir.clone()),
         ("downloadSpeed", "0".to_owned()),
-        ("errorCode", download.error_code.clone()),
-        ("errorMessage", download.error_message.clone()),
         ("gid", download.gid.clone()),
         ("numPieces", download.num_pieces.to_string()),
         ("pieceLength", download.piece_length.to_string()),
@@ -474,7 +486,12 @@ fn status_of(download: &Download) -> Value {
         ("uploadLength", "0".to_owned()),
         ("uploadSpeed", "0".to_owned()),
     ];
-    // EQUIVALENCE E14: bitfield is a conditional key; error downloads have none.
+    // EQUIVALENCE E14: errorCode/errorMessage appear only after the download
+    // stopped; bitfield only for a completed download.
+    if is_terminal(&download.status) {
+        fields.push(("errorCode", download.error_code.clone()));
+        fields.push(("errorMessage", download.error_message.clone()));
+    }
     if download.status == "complete" && !download.bitfield.is_empty() {
         fields.push(("bitfield", download.bitfield.clone()));
     }
@@ -483,10 +500,10 @@ fn status_of(download: &Download) -> Value {
     }
     let mut file = serde_json::Map::new();
     let uri = download.uri.clone();
-    let path = if download.status == "error" {
-        String::new()
-    } else {
+    let path = if download.status == "complete" {
         download.path.clone()
+    } else {
+        String::new()
     };
     file.insert(
         "completedLength".to_owned(),
@@ -499,15 +516,32 @@ fn status_of(download: &Download) -> Value {
     );
     file.insert("path".to_owned(), Value::String(path));
     file.insert("selected".to_owned(), Value::String("true".to_owned()));
-    file.insert(
-        "uris".to_owned(),
+    let uris = if matches!(download.status.as_str(), "active" | "waiting") {
+        json!([{ "status": "used", "uri": uri }])
+    } else {
         json!([
             { "status": "used", "uri": uri.clone() },
             { "status": "waiting", "uri": uri }
-        ]),
-    );
+        ])
+    };
+    file.insert("uris".to_owned(), uris);
     status.insert("files".to_owned(), Value::Array(vec![Value::Object(file)]));
     Value::Object(status)
+}
+
+
+/// aria2 percent-encodes non-ASCII bytes when a URI enters the download
+/// queue; the wire request and tellStatus both carry the encoded form.
+fn normalize_uri(uri: &str) -> String {
+    let mut out = String::with_capacity(uri.len());
+    for byte in uri.bytes() {
+        if (0x21..=0x7e).contains(&byte) {
+            out.push(byte as char);
+        } else {
+            out.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    out
 }
 
 async fn execute(state: &AppState, method: &str, params: Vec<Value>) -> Result<Value, String> {
@@ -525,10 +559,16 @@ async fn execute(state: &AppState, method: &str, params: Vec<Value>) -> Result<V
                     .count()
                     .to_string()
             };
+            let stopped = inner
+                .downloads
+                .iter()
+                .filter(|download| is_terminal(&download.status))
+                .count()
+                .to_string();
             Ok(json!({
                 "downloadSpeed": "0",
                 "numActive": count("active"),
-                "numStopped": count("complete"),
+                "numStopped": stopped,
                 "numStoppedTotal": inner.downloads.len().to_string(),
                 "numWaiting": count("waiting"),
                 "uploadSpeed": "0"
@@ -541,7 +581,7 @@ async fn execute(state: &AppState, method: &str, params: Vec<Value>) -> Result<V
             let uris: Vec<String> = raw_uris
                 .iter()
                 .filter_map(Value::as_str)
-                .map(str::to_owned)
+                .map(normalize_uri)
                 .collect();
             let Some(first) = uris.first() else {
                 return Err("URI is not provided.".to_owned());
@@ -556,12 +596,14 @@ async fn execute(state: &AppState, method: &str, params: Vec<Value>) -> Result<V
                 .unwrap_or(&state.dir)
                 .to_owned();
             let gid = new_gid(&state.inner);
+            let cancel = Arc::new(AtomicBool::new(false));
+            let output = output_path(first, &dir);
             let pending = Download {
                 gid: gid.clone(),
                 status: "active".to_owned(),
                 uri: first.clone(),
-                path: output_path(first, &dir),
                 dir: dir.clone(),
+                path: output.clone(),
                 total_length: 0,
                 completed_length: 0,
                 piece_length: 1 << 20,
@@ -569,6 +611,7 @@ async fn execute(state: &AppState, method: &str, params: Vec<Value>) -> Result<V
                 bitfield: String::new(),
                 error_code: "0".to_owned(),
                 error_message: String::new(),
+                cancel: Arc::clone(&cancel),
             };
             state
                 .inner
@@ -581,6 +624,7 @@ async fn execute(state: &AppState, method: &str, params: Vec<Value>) -> Result<V
             let inner = Arc::clone(&state.inner);
             let ca = state.ca.clone();
             let download_gid = gid.clone();
+            let output_for_task = output.clone();
             tokio::spawn(async move {
                 let result = tokio::task::spawn_blocking(move || {
                     let mut last_failure = None;
@@ -596,6 +640,13 @@ async fn execute(state: &AppState, method: &str, params: Vec<Value>) -> Result<V
                 .await
                 .ok()
                 .flatten();
+                if cancel.load(Ordering::SeqCst) {
+                    // remove/pause happened while the blocking download ran:
+                    // do not let a partial or finished file land on disk.
+                    let _ = std::fs::remove_file(&output_for_task);
+                    let _ = std::fs::remove_file(format!("{output_for_task}.aria2"));
+                    return;
+                }
                 let mut state = inner.lock().expect("RPC state poisoned");
                 let Some(download) = state
                     .downloads
@@ -615,10 +666,11 @@ async fn execute(state: &AppState, method: &str, params: Vec<Value>) -> Result<V
                         download.bitfield = fetched.bitfield;
                     }
                     Some(Err(kind)) => {
-                        download.status = "error".to_owned();
-                        download.error_code = "1".to_owned();
-                        download.error_message = aria2_error_message(&kind);
-                        download.path = String::new();
+                    let (code, message) = aria2_error(&kind);
+                    download.status = "error".to_owned();
+                    download.error_code = code;
+                    download.error_message = message;
+                    download.path = String::new();
                     }
                     None => {
                         download.status = "error".to_owned();
@@ -641,17 +693,20 @@ async fn execute(state: &AppState, method: &str, params: Vec<Value>) -> Result<V
             }
         }
         "aria2.tellActive" | "aria2.tellWaiting" | "aria2.tellStopped" => {
-            let status = match method {
-                "aria2.tellActive" => "active",
-                "aria2.tellWaiting" => "waiting",
-                _ => "complete",
+            let wanted = match method {
+                "aria2.tellActive" => Some("active"),
+                "aria2.tellWaiting" => Some("waiting"),
+                _ => None,
             };
             let inner = state.inner.lock().expect("RPC state poisoned");
             Ok(Value::Array(
                 inner
                     .downloads
                     .iter()
-                    .filter(|download| download.status == status)
+                    .filter(|download| match wanted {
+                        Some(status) => download.status == status,
+                        None => is_terminal(&download.status),
+                    })
                     .map(status_of)
                     .collect(),
             ))
@@ -720,11 +775,24 @@ async fn execute(state: &AppState, method: &str, params: Vec<Value>) -> Result<V
                 return Err(format!("GID {gid} is not found"));
             };
             match method {
-                "aria2.remove" | "aria2.forceRemove" | "aria2.removeDownloadResult" => {
+                "aria2.remove" | "aria2.forceRemove" => {
+                    let download = &mut inner.downloads[position];
+                    download.cancel.store(true, Ordering::SeqCst);
+                    download.status = "removed".to_owned();
+                    download.error_code = "31".to_owned(); // src/error_code.h:77
+                    download.error_message = String::new();
+                }
+                "aria2.removeDownloadResult" => {
+                    inner.downloads[position].cancel.store(true, Ordering::SeqCst);
                     inner.downloads.remove(position);
                 }
                 "aria2.unpause" => inner.downloads[position].status = "waiting".to_owned(),
-                _ => inner.downloads[position].status = "paused".to_owned(),
+                _ => {
+                    let download = &mut inner.downloads[position];
+                    download.cancel.store(true, Ordering::SeqCst);
+                    download.status = "paused".to_owned();
+                    download.completed_length = 0;
+                }
             }
             Ok(Value::String(gid.to_owned()))
         }
@@ -784,13 +852,16 @@ fn decode_xml_entity(name: &str) -> String {
         "gt" | "#62" | "#x3e" | "#X3E" => ">".to_owned(),
         "quot" | "#34" | "#x22" | "#X22" => "\"".to_owned(),
         "apos" | "#39" | "#x27" | "#X27" => "'".to_owned(),
-        other if other.starts_with('#') => char::from_u32(
-            other
-                .trim_start_matches(['#', 'x', 'X'])
-                .parse::<u32>()
-                .unwrap_or(0),
-        )
-        .map_or_else(|| format!("&{other};"), |ch| ch.to_string()),
+        other if other.starts_with('#') => {
+            let (radix, digits) = match other.strip_prefix("#x").or_else(|| other.strip_prefix("#X")) {
+                Some(rest) => (16, rest),
+                None => (10, &other[1..]),
+            };
+            u32::from_str_radix(digits, radix)
+                .ok()
+                .and_then(char::from_u32)
+                .map_or_else(|| format!("&{other};"), |ch| ch.to_string())
+        }
         other => format!("&{other};"),
     }
 }
@@ -1062,6 +1133,7 @@ mod tests {
             bitfield: String::new(),
             error_code: "1".to_owned(),
             error_message: aria2_error_message("connect"),
+            cancel: Arc::new(AtomicBool::new(false)),
         };
         let status = status_of(&download);
         assert!(status.get("bitfield").is_none());
@@ -1071,5 +1143,49 @@ mod tests {
             json!("Failed to establish connection, cause: Connection refused")
         );
         assert_eq!(status["files"][0]["path"], json!(""));
+    }
+
+    #[test]
+    fn e18_xml_hex_references_decode_with_radix_16() {
+        assert_eq!(decode_xml_entity("#x41"), "A");
+        assert_eq!(decode_xml_entity("#xE9"), "é");
+        assert_eq!(decode_xml_entity("#65"), "A");
+    }
+
+    #[test]
+    fn e15_http_404_maps_to_aria2_error_code_3() {
+        assert_eq!(aria2_error("http-404"), ("3".to_owned(), "Resource not found".to_owned()));
+    }
+
+    #[test]
+    fn e14_active_status_has_no_stopped_keys() {
+        let download = Download {
+            gid: "0123456789abcdef".to_owned(),
+            status: "active".to_owned(),
+            uri: "http://127.0.0.1:18080/1kib.bin".to_owned(),
+            path: "downloads/1kib.bin".to_owned(),
+            dir: "downloads".to_owned(),
+            total_length: 0,
+            completed_length: 0,
+            piece_length: 1 << 20,
+            num_pieces: 0,
+            bitfield: String::new(),
+            error_code: "0".to_owned(),
+            error_message: String::new(),
+            cancel: Arc::new(AtomicBool::new(false)),
+        };
+        let status = status_of(&download);
+        assert!(status.get("errorCode").is_none());
+        assert!(status.get("errorMessage").is_none());
+        assert_eq!(status["files"][0]["path"], json!(""));
+        assert_eq!(status["files"][0]["uris"].as_array().map(Vec::len), Some(1));
+    }
+
+    #[test]
+    fn uri_non_ascii_is_percent_encoded_for_the_wire() {
+        assert_eq!(
+            normalize_uri("http://127.0.0.1:18080/1kib.bin?x=Ay=é"),
+            "http://127.0.0.1:18080/1kib.bin?x=Ay=%C3%A9"
+        );
     }
 }
